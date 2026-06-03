@@ -1,7 +1,7 @@
 [project]
 name = "pycurb"
 version = "0.1.0"
-description = "A python rate limit library"
+description = "A framework-agnostic python rate limit library"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
