@@ -1,6 +1,7 @@
 def parse_duration(duration_str: str) -> int:
     """
     Convert a shorthand duration string into seconds.
+    Duration must be an integer followed by a unit.
     Supported units:
         - s: seconds
         - m: minutes

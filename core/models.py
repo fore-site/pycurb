@@ -10,22 +10,22 @@ class LimitRule(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     name: str = Field(..., min_length=1, description="Short unique identifier for the rule.")
-    key_type: Literal["ip", "api_key", "user_id", "custom"] = Field("ip", description="Hint for adapters on how to extract client key.")
+    key_type: Literal["ip", "api_key", "user_id", "custom"] = Field(default="ip", description="Hint for adapters on how to extract client key.")
     algorithm: Literal["sliding_window", "fixed_window", "token_bucket", "leaky_bucket"] = Field(..., description="Rate limit algorithm to use.")
     
     # Window algorithms require limit and window; token bucket can use them if capacity and refill_rate are not provided.
-    limit: Optional[int] = Field(None, gt=0, description="Maximum requests allowed (window-based) or capacity (token bucket).")
-    window: Optional[int] = Field(None, gt=0, description="Time window in seconds (for window-based algorithms) or base to calculate refill rate.")
+    limit: Optional[int] = Field(default=None, gt=0, description="Maximum requests allowed (window-based) or capacity (token bucket).")
+    window: Optional[int] = Field(default=None, gt=0, description="Time window in seconds (for window-based algorithms) or base to calculate refill rate.")
     
     # Optional parameters for token bucket and leaky bucket algorithms
-    capacity: Optional[int] = Field(None, gt=0, description="Maximum capacity for token bucket (burst limit).")
-    refill_rate: Optional[float] = Field(None, gt=0, description="Tokens added per second.")
+    capacity: Optional[int] = Field(default=None, gt=0, description="Maximum capacity for token bucket (burst limit).")
+    refill_rate: Optional[float] = Field(default=None, gt=0, description="Tokens added per second.")
 
     # Leaky bucket parameter
-    leak_rate: Optional[float] = Field(None, gt=0, description="Requests processed per second.")
+    leak_rate: Optional[float] = Field(default=None, gt=0, description="Requests processed per second.")
 
     # Metadata for extra conditional logic
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Arbitrary user data for extra conditional logic.")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Arbitrary user data for extra conditional logic.")
 
     @model_validator(mode="after")
     def validate_algorithm_parameters(self) -> "LimitRule":
@@ -85,9 +85,9 @@ class RateLimitResult(BaseModel):
     allowed: bool = Field(..., description="Request permitted or not")
     remaining: int = Field(..., ge=0, description="Remaining requests/tokens in current window/bucket.")
     reset_at: float = Field(..., description="Unix timestamp (seconds) when the limit resets.")
-    limit: int = Field(..., gt=0, description="The configured limit (for X-Ratelimit-Limit header).")
-    retry_after: Optional[int] = Field(None, ge=0, description="Seconds to wait before retrying (only when allowed is False).")
-    rule_name: Optional[str] = Field(None, description="Name of the rule that was applied.")
+    limit: int = Field(..., gt=0, description="The configured limit (for X-RateLimit-Limit header).")
+    retry_after: Optional[int] = Field(default=None, ge=0, description="Seconds to wait before retrying (only when allowed is False).")
+    rule_name: Optional[str] = Field(default=None, description="Name of the rule that was applied.")
 
 
 class RateLimitHeaders(BaseModel):
@@ -102,9 +102,9 @@ class RateLimitHeaders(BaseModel):
     def to_dict(self) -> Dict[str, str]:
         """Convert to dictionary of header names and values"""
         headers = {
-            "X-Ratelimit-Limit": str(self.limit),
-            "X-Ratelimit-Remaining": str(self.remaining),
-            "X-Ratelimit-Reset": str(self.reset),
+            "X-RateLimit-Limit": str(self.limit),
+            "X-RateLimit-Remaining": str(self.remaining),
+            "X-RateLimit-Reset": str(self.reset),
         }
         if self.retry_after is not None:
             headers["Retry-After"] = str(self.retry_after)
