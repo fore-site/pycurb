@@ -25,7 +25,7 @@ class LimitRule(BaseModel):
     leak_rate: Optional[float] = Field(default=None, gt=0, description="Requests processed per second.")
 
     # Metadata for extra conditional logic
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Arbitrary user data for extra conditional logic.")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary user data for extra conditional logic.")
 
     @model_validator(mode="after")
     def validate_algorithm_parameters(self) -> "LimitRule":
