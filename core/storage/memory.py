@@ -29,7 +29,7 @@ class MemoryStorage(Storage):
         async with lock:
             q = self._sliding.setdefault(key, deque())
 
-            while q and q[0] < now - window:
+            while q and q[0] <= now - window:
                 q.popleft()
 
             if len(q) < limit:
@@ -107,3 +107,6 @@ class MemoryStorage(Storage):
             
             else:
                 return False, 0, now + (1 / leak_rate)
+
+    async def close(self) -> None:
+        return None

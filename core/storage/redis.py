@@ -22,18 +22,18 @@ class RedisStorage(Storage):
         local unique_id = ARGV[4]
 
         -- Remove expired entries
-        local max_cutoff = '(' .. (now - window)
+        local max_cutoff = now - window
         redis.call('ZREMRANGEBYSCORE', key, '-inf', max_cutoff)
 
         local current = redis.call('ZCARD', key)
         if current < limit then
             redis.call('ZADD', key, now, now .. ':' .. unique_id)
             redis.call('EXPIRE', key, window)
-            return {1, limit - current - 1, now + window}
+            return {1, limit - current - 1, string.format('%.17g', now + window)}
         else
             local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
             local reset_at = tonumber(oldest[2]) + window
-            return {0, 0, reset_at}
+            return {0, 0, string.format('%.17g', reset_at)}
         end
         """
         unique_id = binascii.hexlify(os.urandom(8)).decode()
@@ -97,11 +97,11 @@ class RedisStorage(Storage):
             redis.call('EXPIRE', key, 3600) -- optional expiry
             local remaining = math.floor(new_tokens)
             local reset_at = now + (capacity - new_tokens) / rate
-            return {1, remaining, reset_at}
+            return {1, remaining, string.format('%.17g', reset_at)}
         else
             local wait = (1 - new_tokens) / rate
             local reset_at = now + wait
-            return {0, 0, reset_at}
+            return {0, 0, string.format('%.17g', reset_at)}
         end
         """
         script = self.redis.register_script(lua_script)
@@ -152,10 +152,10 @@ class RedisStorage(Storage):
             redis.call('EXPIRE', key, 3600)
             local remaining = capacity - new_queue
             local reset_at = now + (1 / rate)
-            return {1, remaining, reset_at}
+            return {1, remaining, string.format('%.17g', reset_at)}
         else
             local reset_at = now + (1 / rate)
-            return {0, 0, reset_at}
+            return {0, 0, string.format('%.17g', reset_at)}
         end
         """
         script = self.redis.register_script(lua_script)
