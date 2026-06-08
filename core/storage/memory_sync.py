@@ -5,6 +5,8 @@ from .base_sync import StorageSync
 import math
 
 class MemoryStorageSync(StorageSync):
+    """Synchronous in-memory storage for rate limiting."""
+
     def __init__(self) -> None:
         self._sliding: Dict[str, Deque[float]] = {}
         self._fixed: Dict[str, Tuple[int, float]] = {}
