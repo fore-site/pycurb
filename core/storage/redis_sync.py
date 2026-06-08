@@ -5,7 +5,7 @@ from typing import Tuple
 import redis
 from .base_sync import StorageSync
 
-class RedisStorage(StorageSync):
+class RedisStorageSync(StorageSync):
     """Sync redis storage for rate limiting."""
     
     def __init__(self, redis_client: redis.Redis, key_prefix: str = "ratelimit:") -> None:
