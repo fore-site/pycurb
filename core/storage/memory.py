@@ -93,9 +93,13 @@ class MemoryStorage(Storage):
             leaked = math.floor((now - last_leak_time) * leak_rate)
             new_queue = max(queue_size - leaked, 0)
 
+            # Preserve fractional leak tracking history
+            if leaked > 0:
+                last_leak_time += leaked / leak_rate
+
             if new_queue < capacity:
                 new_queue += 1
-                self._leaky[key] = (new_queue, now)
+                self._leaky[key] = (new_queue, last_leak_time)
 
                 remaining = capacity - new_queue
                 reset_at = now + (1 / leak_rate)

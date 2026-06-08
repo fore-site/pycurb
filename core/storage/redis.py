@@ -1,6 +1,7 @@
-import asyncio
 import math
-from typing import Tuple, Optional
+import binascii
+import os
+from typing import Tuple
 import redis.asyncio as aioredis
 from .base import Storage
 
@@ -18,14 +19,15 @@ class RedisStorage(Storage):
         local now = tonumber(ARGV[1])
         local window = tonumber(ARGV[2])
         local limit = tonumber(ARGV[3])
+        local unique_id = ARGV[4]
 
         -- Remove expired entries
-        local lower_bound = '(' .. (now - window)
-        redis.call('ZREMRANGEBYSCORE', key, 0, lower_bound)
+        local max_cutoff = '(' .. (now - window)
+        redis.call('ZREMRANGEBYSCORE', key, '-inf', max_cutoff)
 
         local current = redis.call('ZCARD', key)
         if current < limit then
-            redis.call('ZADD', key, now, now .. ':' .. math.random())
+            redis.call('ZADD', key, now, now .. ':' .. unique_id)
             redis.call('EXPIRE', key, window)
             return {1, limit - current - 1, now + window}
         else
@@ -34,9 +36,10 @@ class RedisStorage(Storage):
             return {0, 0, reset_at}
         end
         """
+        unique_id = binascii.hexlify(os.urandom(8)).decode()
         script = self.redis.register_script(lua_script)
         full_key = self.prefix + "sliding:" + key
-        result = await script(keys=[full_key], args=[now, window, limit])
+        result = await script(keys=[full_key], args=[now, window, limit, unique_id])
         allowed = bool(result[0])
         remaining = int(result[1])
         reset_at = float(result[2])
@@ -85,7 +88,7 @@ class RedisStorage(Storage):
         end
 
         local elapsed = now - last_refill
-        local tokens_during_elasped = elapsed * rate
+        local tokens_during_elapsed = elapsed * rate
         local new_tokens = math.min(capacity, tokens + tokens_during_elapsed)
 
         if new_tokens >= 1 then
@@ -123,8 +126,8 @@ class RedisStorage(Storage):
         if data then
             local colon = string.find(data, ':')
             if colon then
-                queue_size = string.sub(tonumber(data, 1, colon - 1))
-                last_leak = string.sub(tonumber(data, colon + 1))
+                queue_size = tonumber(string.sub(data, 1, colon - 1))
+                last_leak = tonumber(string.sub(data, colon + 1))
             else
                 queue_size = 0
                 last_leak = now
@@ -138,16 +141,21 @@ class RedisStorage(Storage):
         local leaked = math.floor(elapsed * rate)
         local new_queue = math.max(queue_size - leaked, 0)
 
+        -- Preserve fractinal leak tracking history
+        if leaked > 0 then
+            last_leak = last_leak + (leaked / rate)
+        end
+        
         if new_queue < capacity then
             new_queue = new_queue + 1
-            redis.call('SET', key, new_queue .. ':' .. now)
+            redis.call('SET', key, new_queue .. ':' .. last_leak)
             redis.call('EXPIRE', key, 3600)
             local remaining = capacity - new_queue
             local reset_at = now + (1 / rate)
             return {1, remaining, reset_at}
         else
             local reset_at = now + (1 / rate)
-            return (0, 0, reset_at)
+            return {0, 0, reset_at}
         end
         """
         script = self.redis.register_script(lua_script)
