@@ -27,7 +27,7 @@ class MemoryStorage(Storage):
         async with lock:
             q = self._sliding.setdefault(key, deque())
 
-            while q and q[0] <= now - window:
+            while q and q[0] < now - window:
                 q.popleft()
 
             if len(q) < limit:
@@ -65,18 +65,18 @@ class MemoryStorage(Storage):
     async def token_bucket(self, key: str, capacity: int, refill_rate: float, now: float) -> Tuple[bool, int, float]:
         lock = await self.get_lock(key)
         async with lock:
-            tokens, last_refill_time = self._token.get(key, (capacity, now))
+            tokens, last_refill_time = self._token.get(key, (float(capacity), now))
 
             time_elapsed = now - last_refill_time
             tokens_during_elapsed = time_elapsed * refill_rate
             
-            new_tokens = min(tokens + tokens_during_elapsed, capacity)
+            new_tokens = min(tokens + tokens_during_elapsed, float(capacity))
 
             if new_tokens >= 1:
                 new_tokens -= 1
                 self._token[key] = (new_tokens, now)
                 remaining = int(new_tokens)
-                reset_at = now + (1  / refill_rate)
+                reset_at = now + (capacity - new_tokens) / refill_rate
                 return True, remaining, reset_at
             
             else:
