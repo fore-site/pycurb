@@ -6,3 +6,5 @@ from .token_bucket import TokenBucketAlgorithm
 from .token_bucket_sync import TokenBucketAlgorithmSync
 from .leaky_bucket import LeakyBucketAlgorithm
 from .leaky_bucket_sync import LeakyBucketAlgorithmSync
+from .base import RateLimiterAlgorithm
+from .base_sync import RateLimiterAlgorithmSync
