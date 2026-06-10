@@ -10,6 +10,7 @@ from ...core import (
 from ...core.storage import MemoryStorage, MemoryStorageSync
 
 # Helpers
+
 def create_async_limiter(rules=None):
     storage = MemoryStorage()
     if rules is None:
@@ -32,9 +33,8 @@ def create_sync_limiter(rules=None):
             resolver = rules
     return RateLimiterSync(storage, resolver)
 
-# ------------------------------------------------------------------
 # Async Tests
-# ------------------------------------------------------------------
+
 class TestAsyncRateLimitDecorator:
     async def test_named_rule_with_key_extractor(self):
         limiter = create_async_limiter()

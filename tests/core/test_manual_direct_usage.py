@@ -95,9 +95,8 @@ class TestAsyncManualUsage:
         result = await limiter.check("bob", "test")
         assert result.allowed is True
 
-# ------------------------------------------------------------------
 # Sync Tests
-# ------------------------------------------------------------------
+
 class TestSyncManualUsage:
     def test_static_rule_list(self):
         rule = LimitRule(name="test", algorithm="fixed_window", limit=2, window=10)
