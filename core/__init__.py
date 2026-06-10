@@ -4,6 +4,7 @@ from .limiter_sync import RateLimiterSync
 from .resolver import MutableRuleResolver, static_rule_resolver
 from .decorators import rate_limit, RateLimitExceeded, arg_extractor
 
+
 __all__ = [
     "LimitRule",
     "RateLimitResult",
