@@ -213,6 +213,38 @@ class TestAsyncAlgorithms:
         assert_result(result, limit=20, rule_name="tb_precedence")
 
     @pytest.mark.asyncio
+    async def test_leaky_bucket_derives_leak_rate_from_capacity_and_window(self, monkeypatch):
+        freeze_time(monkeypatch, leaky_bucket_module)
+        rule = LimitRule(name="lb_window", algorithm="leaky_bucket", capacity=20, window=4)
+        storage = AsyncSpyStorage()
+
+        await LeakyBucketAlgorithm().check("client:lb-window", rule, storage)  # type: ignore[arg-type]
+
+        assert storage.calls == [
+            ("leaky_bucket", {"key": "client:lb-window", "capacity": 20, "refill_rate": 5, "now": BASE_TIME})
+        ]
+
+    @pytest.mark.asyncio
+    async def test_leaky_bucket_prefers_capacity_and_explicit_leak_rate(self, monkeypatch):
+        freeze_time(monkeypatch, leaky_bucket_module)
+        rule = LimitRule(
+            name="lb_precedence",
+            algorithm="leaky_bucket",
+            limit=100,
+            capacity=20,
+            window=10,
+            leak_rate=1.5,
+        )
+        storage = AsyncSpyStorage()
+
+        result = await LeakyBucketAlgorithm().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
+
+        assert storage.calls == [
+            ("leaky_bucket", {"key": "client:lb-precedence", "capacity": 20, "leak_rate": 1.5, "now": BASE_TIME})
+        ]
+        assert_result(result, limit=20, rule_name="lb_precedence")
+
+    @pytest.mark.asyncio
     async def test_leaky_bucket_uses_limit_as_capacity_fallback(self, monkeypatch):
         freeze_time(monkeypatch, leaky_bucket_module)
         rule = LimitRule(name="lb_limit", algorithm="leaky_bucket", limit=9, leak_rate=3)
@@ -224,19 +256,6 @@ class TestAsyncAlgorithms:
             ("leaky_bucket", {"key": "client:lb", "capacity": 9, "leak_rate": 3, "now": BASE_TIME})
         ]
         assert_result(result, limit=9, rule_name="lb_limit")
-
-    @pytest.mark.asyncio
-    async def test_leaky_bucket_prefers_capacity_over_limit(self, monkeypatch):
-        freeze_time(monkeypatch, leaky_bucket_module)
-        rule = LimitRule(name="lb_precedence", algorithm="leaky_bucket", limit=100, capacity=8, leak_rate=2)
-        storage = AsyncSpyStorage()
-
-        result = await LeakyBucketAlgorithm().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
-
-        assert storage.calls == [
-            ("leaky_bucket", {"key": "client:lb-precedence", "capacity": 8, "leak_rate": 2, "now": BASE_TIME})
-        ]
-        assert_result(result, limit=8, rule_name="lb_precedence")
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -422,6 +441,36 @@ class TestSyncAlgorithms:
             ("token_bucket", {"key": "client:tb-precedence", "capacity": 20, "refill_rate": 1.5, "now": BASE_TIME})
         ]
         assert_result(result, limit=20, rule_name="tb_precedence_sync")
+
+    def test_leaky_bucket_derives_leak_rate_from_capacity_and_window(self, monkeypatch):
+        freeze_time(monkeypatch, leaky_bucket_sync_module)
+        rule = LimitRule(name="lb_window_sync", algorithm="leaky_bucket", capacity=20, window=4)
+        storage = SyncSpyStorage()
+
+        LeakyBucketAlgorithmSync().check("client:lb-window", rule, storage)  # type: ignore[arg-type]
+
+        assert storage.calls == [
+            ("leaky_bucket", {"key": "client:lb-window", "capacity": 20, "leak_rate": 5, "now": BASE_TIME})
+        ]
+
+    def test_leaky_bucket_prefers_capacity_and_explicit_leak_rate(self, monkeypatch):
+        freeze_time(monkeypatch, leaky_bucket_sync_module)
+        rule = LimitRule(
+            name="lb_precedence_sync",
+            algorithm="leaky_bucket",
+            limit=100,
+            capacity=20,
+            window=10,
+            leak_rate=1.5,
+        )
+        storage = SyncSpyStorage()
+
+        result = LeakyBucketAlgorithmSync().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
+
+        assert storage.calls == [
+            ("leaky_bucket", {"key": "client:lb-precedence", "capacity": 20, "leak_rate": 1.5, "now": BASE_TIME})
+        ]
+        assert_result(result, limit=20, rule_name="lb_precedence_sync")
 
     def test_leaky_bucket_uses_limit_as_capacity_fallback(self, monkeypatch):
         freeze_time(monkeypatch, leaky_bucket_sync_module)
