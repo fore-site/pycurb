@@ -35,7 +35,7 @@ def rate_limit(
     rule_name: Optional[str] = None,
     limit_str: Optional[str] = None,
     algorithm: str = "sliding_window",
-    key_extractor: Optional[Callable[..., str]] = None,
+    key_extractor: Optional[Callable[..., str]],
     raise_on_limit: bool = True,
 ):
     """
@@ -54,7 +54,7 @@ def rate_limit(
     if (rule_name is None) == (limit_str is None):
         raise ValueError("Provide exactly one of 'rule_name' or 'limit_str'")
     if key_extractor is None:
-        key_extractor = lambda *args, **kwargs: "default"
+        raise TypeError("key_extractor is required to extract the key for rate limiting")
 
     def decorator(func: Callable) -> Callable:
         # Determine the effective rule name
