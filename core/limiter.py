@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Callable, Union
 from .models import LimitRule, RateLimitResult
 from .storage import Storage
 from .algorithms import (
@@ -12,7 +12,11 @@ from .algorithms import (
 class RateLimiter:
     """Async core rate limiter engine"""
 
-    def __init__(self, storage: Storage, rules: List[LimitRule]):
+    def __init__(
+            self, 
+            storage: Storage, 
+            rules_or_resolver: Union[List[LimitRule], Callable[[str], LimitRule]]
+        ):
         """
         Initialize the rate limiter
 
@@ -21,13 +25,24 @@ class RateLimiter:
             rules: A list of LimitRule objects. Each rule must have a unique name
         """
         self.storage = storage
-        self.rules: Dict[str, LimitRule] = {rule.name: rule for rule in rules}
+        
+        if isinstance(rules_or_resolver, list):
+            # static rule list
+            rule_map: Dict[str, LimitRule] = {rule.name: rule for rule in rules_or_resolver}
+            self.rule_resolver = lambda name: rule_map.get(name)
+        else:
+            self.rule_resolver = rules_or_resolver
+
         self.algorithms: Dict[str, RateLimiterAlgorithm] = {
             "sliding_window": SlidingWindowAlgorithm(),
             "fixed_window": FixedWindowAlgorithm(),
             "token_bucket": TokenBucketAlgorithm(),
             "leaky_bucket": LeakyBucketAlgorithm(),
         }
+
+    @classmethod
+    def from_resolver(cls, storage: Storage, resolver: Callable[[str], LimitRule]):
+        return cls(storage, resolver)
 
     async def check(self, key: str, rule_name: str) -> RateLimitResult:
         """
@@ -43,7 +58,7 @@ class RateLimiter:
         Raises:
             ValueError: If the rule name is unknown or algorithm is not supported.
         """
-        rule = self.rules.get(rule_name)
+        rule = self.rule_resolver(rule_name)
         if rule is None:
             raise ValueError(f"Rule '{rule_name}' not found.")
         

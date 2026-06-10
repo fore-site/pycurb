@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Callable, Union
 from .models import LimitRule, RateLimitResult
 from .storage.base_sync import StorageSync
 from .algorithms import (
@@ -12,9 +12,18 @@ from .algorithms import (
 class RateLimiterSync:
     """Sync core rate limiter engine (for WSGI frameworks)."""
 
-    def __init__(self, storage: StorageSync, rules: List[LimitRule]):
+    def __init__(self, 
+                 storage: StorageSync, 
+                 rules_or_resolver: Union[List[LimitRule], Callable[[str], LimitRule]]
+        ):
         self.storage = storage
-        self.rules: Dict[str, LimitRule] = {rule.name: rule for rule in rules}
+
+        if isinstance(rules_or_resolver, list):
+            rule_map: Dict[str, LimitRule] = {rule.name: rule for rule in rules_or_resolver}
+            self.rule_resolver = lambda name: rule_map.get(name)
+        else:
+            self.rule_resolver = rules_or_resolver
+
         self.algorithms: Dict[str, RateLimiterAlgorithmSync] = {
             "sliding_window": SlidingWindowAlgorithmSync(),
             "fixed_window": FixedWindowAlgorithmSync(),
@@ -36,7 +45,7 @@ class RateLimiterSync:
         Raises:
             ValueError: If the rule name is unknown or algorithm is not supported.
         """
-        rule = self.rules.get(rule_name)
+        rule = self.rule_resolver(rule_name)
         if rule is None:
             raise ValueError(f"Rule '{rule_name}' not found")
         algo = self.algorithms.get(rule.algorithm)
