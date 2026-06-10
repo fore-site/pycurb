@@ -1,8 +1,11 @@
-from typing import Dict
+from typing import Dict, Callable
 from .models import LimitRule
 
 class MutableRuleResolver:
-    """A rule resolver that stores rules in memory and allows dynamic addition/update."""
+    """
+    A rule resolver that stores rules in memory and allows dynamic addition/update.
+    Implements the callable interface expected by RateLimiter.
+    """
 
     def __init__(self):
         self._rules: Dict[str, LimitRule] = {}
@@ -18,3 +21,15 @@ class MutableRuleResolver:
     def __call__(self, name: str) -> LimitRule:
         """Resolve rule by name. Raises KeyError if not found."""
         return self._rules[name]
+
+def static_rule_resolver(rules: list[LimitRule]) -> Callable[[str], LimitRule]:
+    """
+    Create a resolver from a static list of rules.
+    Useful for backward compatibility.
+    """
+    rule_map = {rule.name: rule for rule in rules}
+    def resolver(name: str) -> LimitRule:
+        if name not in rule_map:
+            raise ValueError(f"Rule '{name}' not found")
+        return rule_map[name]
+    return resolver
