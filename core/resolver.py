@@ -19,7 +19,8 @@ class MutableRuleResolver:
         self._rules.pop(name, None)
 
     def __call__(self, name: str) -> LimitRule:
-        """Resolve rule by name. Raises KeyError if not found."""
+        if name not in self._rules:
+            raise ValueError(f"Rule '{name}' not found")
         return self._rules[name]
 
 def static_rule_resolver(rules: list[LimitRule]) -> Callable[[str], LimitRule]:
