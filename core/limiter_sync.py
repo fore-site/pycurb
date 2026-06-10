@@ -1,6 +1,7 @@
 from typing import Dict, List, Callable, Union
 from .models import LimitRule, RateLimitResult
 from .storage.base_sync import StorageSync
+from .resolver import static_rule_resolver
 from .algorithms import (
     RateLimiterAlgorithmSync,
     SlidingWindowAlgorithmSync,
@@ -19,8 +20,7 @@ class RateLimiterSync:
         self.storage = storage
 
         if isinstance(rules_or_resolver, list):
-            rule_map: Dict[str, LimitRule] = {rule.name: rule for rule in rules_or_resolver}
-            self.rule_resolver = lambda name: rule_map.get(name)
+            self.rule_resolver = static_rule_resolver(rules_or_resolver)
         else:
             self.rule_resolver = rules_or_resolver
 
