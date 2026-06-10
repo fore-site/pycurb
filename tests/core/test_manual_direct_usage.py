@@ -2,7 +2,7 @@ import pytest
 from ...core import (
     RateLimiter, RateLimiterSync,
     MutableRuleResolver, static_rule_resolver,
-    LimitRule, RateLimitExceeded
+    LimitRule
 )
 from ...core.storage import MemoryStorage, MemoryStorageSync
 
@@ -15,10 +15,10 @@ def create_sync_limiter(rules_or_resolver):
     storage = MemoryStorageSync()
     return RateLimiterSync(storage, rules_or_resolver)
 
-# ------------------------------------------------------------------
 # Async Tests
-# ------------------------------------------------------------------
+
 class TestAsyncManualUsage:
+    @pytest.mark.asyncio
     async def test_static_rule_list(self):
         rule = LimitRule(name="test", algorithm="fixed_window", limit=2, window=10)
         limiter = create_async_limiter([rule])
@@ -38,6 +38,7 @@ class TestAsyncManualUsage:
         result = await limiter.check("key2", "test")
         assert result.allowed is True
 
+    @pytest.mark.asyncio
     async def test_mutable_resolver(self):
         resolver = MutableRuleResolver()
         limiter = create_async_limiter(resolver)
@@ -58,6 +59,7 @@ class TestAsyncManualUsage:
         result = await limiter.check("key", "test")
         assert result.allowed is True
 
+    @pytest.mark.asyncio
     async def test_remove_rule(self):
         resolver = MutableRuleResolver()
         limiter = create_async_limiter(resolver)
@@ -69,6 +71,7 @@ class TestAsyncManualUsage:
         with pytest.raises(ValueError, match="Rule 'temp' not found"):
             await limiter.check("key", "temp")
 
+    @pytest.mark.asyncio
     async def test_static_resolver_function(self):
         rules = [LimitRule(name="api", algorithm="token_bucket", capacity=5, refill_rate=1)]
         resolver = static_rule_resolver(rules)
@@ -79,11 +82,13 @@ class TestAsyncManualUsage:
         result = await limiter.check("key", "api")
         assert result.allowed is False
 
+    @pytest.mark.asyncio
     async def test_rule_not_found(self):
         limiter = create_async_limiter([])
         with pytest.raises(ValueError, match="Rule 'unknown' not found"):
             await limiter.check("key", "unknown")
 
+    @pytest.mark.asyncio
     async def test_key_extractor_not_needed_manual(self):
         # Manual usage passes key directly, no extractor needed.
         rule = LimitRule(name="test", algorithm="fixed_window", limit=1, window=10)
