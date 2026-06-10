@@ -21,8 +21,9 @@ class LeakyBucketAlgorithm(RateLimiterAlgorithm):
             raise ValueError(f"leak_rate must be positive, got {leak_rate}")
         
         now = time.time()
+        storage_key = f"{rule.name}:{key}"
         allowed, remaining, reset_at = await storage.leaky_bucket(
-            key=key, capacity=capacity, leak_rate=leak_rate, now=now
+            key=storage_key, capacity=capacity, leak_rate=leak_rate, now=now
         )
         return RateLimitResult(
             allowed=allowed,

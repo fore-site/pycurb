@@ -20,8 +20,9 @@ class TokenBucketAlgorithmSync(RateLimiterAlgorithmSync):
             raise ValueError(f"refill_rate must be positive, got {refill_rate}.")
         
         now = time.time()
+        storage_key = f"{rule.name}:{key}"
         allowed, remaining, reset_at = storage.token_bucket(
-            key=key, capacity=capacity, refill_rate=refill_rate, now=now
+            key=storage_key, capacity=capacity, refill_rate=refill_rate, now=now
         )
         return RateLimitResult(
             allowed=allowed,

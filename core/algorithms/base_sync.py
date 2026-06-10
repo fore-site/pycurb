@@ -10,7 +10,7 @@ class RateLimiterAlgorithmSync(ABC):
         """
         Evaluate rate limit for a given key and rule.
         Args:
-            key: Unique client identifier (extracted by adapter)
+            key: Unique client identifier (extracted by adapter) prefixed with rule name
             rule: The limit rule applied
             storage: Storage backend for atomic counters
         

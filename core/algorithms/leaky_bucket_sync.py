@@ -6,17 +6,24 @@ from ..storage.base_sync import StorageSync
 class LeakyBucketAlgorithmSync(RateLimiterAlgorithmSync):
     def check(self, key: str, rule: LimitRule, storage: StorageSync) -> RateLimitResult:
         capacity = rule.capacity if rule.capacity is not None else rule.limit
-        leak_rate = rule.leak_rate
+        
         if capacity is None:
             raise ValueError("Leaky bucket algorithm requires 'capacity' or 'limit'.")
-        if leak_rate is None:
-            raise ValueError("Leaky bucket algorithm requires 'leak_rate'.")
-        if leak_rate <= 0:
-            raise ValueError(f"leak_rate must be positive, got {leak_rate}")
         
+        if rule.leak_rate is not None:
+            rate = rule.leak_rate
+        else:
+            if rule.window is None:
+                raise ValueError("Leaky bucket algorithm requires 'leak_rate' or 'window'.")
+            rate = capacity / rule.window
+        
+        if rate <= 0:
+            raise ValueError(f"leak_rate must be positive, got {rate}")
+
         now = time.time()
+        storage_key = f"{rule.name}:{key}"
         allowed, remaining, reset_at = storage.leaky_bucket(
-            key=key, capacity=capacity, leak_rate=leak_rate, now=now
+            key=storage_key, capacity=capacity, leak_rate=rate, now=now
         )
         return RateLimitResult(
             allowed=allowed,
