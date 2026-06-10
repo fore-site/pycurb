@@ -83,6 +83,14 @@ def assert_result(result, *, allowed=True, remaining=4, reset_at=RESET_AT, limit
     assert result.rule_name == rule_name
 
 
+def _prefixed_expected(expected_kwargs, rule):
+    """Return a copy of expected_kwargs with the key prefixed by the rule name."""
+    expected = expected_kwargs.copy()
+    if "key" in expected:
+        expected["key"] = f"{rule.name}:{expected["key"]}"
+    return expected
+
+
 class TestAsyncAlgorithms:
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -126,7 +134,7 @@ class TestAsyncAlgorithms:
 
         result = await algorithm.check("client:1", rule, storage)  # type: ignore[arg-type]
 
-        assert storage.calls == [(storage_method, expected_kwargs)]
+        assert storage.calls == [(storage_method, _prefixed_expected(expected_kwargs, rule))]
         assert_result(result, limit=expected_kwargs.get("limit", expected_kwargs.get("capacity")), rule_name=rule.name)
 
     @pytest.mark.asyncio
@@ -176,7 +184,7 @@ class TestAsyncAlgorithms:
         result = await TokenBucketAlgorithm().check("client:tb", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("token_bucket", {"key": "client:tb", "capacity": 12, "refill_rate": 3, "now": BASE_TIME})
+            ("token_bucket", {"key": f"{rule.name}:client:tb", "capacity": 12, "refill_rate": 3, "now": BASE_TIME})
         ]
         assert_result(result, limit=12, rule_name="tb_limit")
 
@@ -189,7 +197,7 @@ class TestAsyncAlgorithms:
         await TokenBucketAlgorithm().check("client:tb-window", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("token_bucket", {"key": "client:tb-window", "capacity": 20, "refill_rate": 5, "now": BASE_TIME})
+            ("token_bucket", {"key": f"{rule.name}:client:tb-window", "capacity": 20, "refill_rate": 5, "now": BASE_TIME})
         ]
 
     @pytest.mark.asyncio
@@ -208,7 +216,7 @@ class TestAsyncAlgorithms:
         result = await TokenBucketAlgorithm().check("client:tb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("token_bucket", {"key": "client:tb-precedence", "capacity": 20, "refill_rate": 1.5, "now": BASE_TIME})
+            ("token_bucket", {"key": f"{rule.name}:client:tb-precedence", "capacity": 20, "refill_rate": 1.5, "now": BASE_TIME})
         ]
         assert_result(result, limit=20, rule_name="tb_precedence")
 
@@ -221,7 +229,7 @@ class TestAsyncAlgorithms:
         await LeakyBucketAlgorithm().check("client:lb-window", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("leaky_bucket", {"key": "client:lb-window", "capacity": 20, "refill_rate": 5, "now": BASE_TIME})
+            ("leaky_bucket", {"key": f"{rule.name}:client:lb-window", "capacity": 20, "leak_rate": 5, "now": BASE_TIME})
         ]
 
     @pytest.mark.asyncio
@@ -240,7 +248,7 @@ class TestAsyncAlgorithms:
         result = await LeakyBucketAlgorithm().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("leaky_bucket", {"key": "client:lb-precedence", "capacity": 20, "leak_rate": 1.5, "now": BASE_TIME})
+            ("leaky_bucket", {"key": f"{rule.name}:client:lb-precedence", "capacity": 20, "leak_rate": 1.5, "now": BASE_TIME})
         ]
         assert_result(result, limit=20, rule_name="lb_precedence")
 
@@ -253,7 +261,7 @@ class TestAsyncAlgorithms:
         result = await LeakyBucketAlgorithm().check("client:lb", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("leaky_bucket", {"key": "client:lb", "capacity": 9, "leak_rate": 3, "now": BASE_TIME})
+            ("leaky_bucket", {"key": f"{rule.name}:client:lb", "capacity": 9, "leak_rate": 3, "now": BASE_TIME})
         ]
         assert_result(result, limit=9, rule_name="lb_limit")
 
@@ -360,7 +368,7 @@ class TestSyncAlgorithms:
 
         result = algorithm.check("client:1", rule, storage)  # type: ignore[arg-type]
 
-        assert storage.calls == [(storage_method, expected_kwargs)]
+        assert storage.calls == [(storage_method, _prefixed_expected(expected_kwargs, rule))]
         assert_result(result, limit=expected_kwargs.get("limit", expected_kwargs.get("capacity")), rule_name=rule.name)
 
     @pytest.mark.parametrize(
@@ -408,7 +416,7 @@ class TestSyncAlgorithms:
         result = TokenBucketAlgorithmSync().check("client:tb", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("token_bucket", {"key": "client:tb", "capacity": 12, "refill_rate": 3, "now": BASE_TIME})
+            ("token_bucket", {"key": f"{rule.name}:client:tb", "capacity": 12, "refill_rate": 3, "now": BASE_TIME})
         ]
         assert_result(result, limit=12, rule_name="tb_limit_sync")
 
@@ -420,7 +428,7 @@ class TestSyncAlgorithms:
         TokenBucketAlgorithmSync().check("client:tb-window", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("token_bucket", {"key": "client:tb-window", "capacity": 20, "refill_rate": 5, "now": BASE_TIME})
+            ("token_bucket", {"key": f"{rule.name}:client:tb-window", "capacity": 20, "refill_rate": 5, "now": BASE_TIME})
         ]
 
     def test_token_bucket_prefers_capacity_and_explicit_refill_rate(self, monkeypatch):
@@ -438,7 +446,7 @@ class TestSyncAlgorithms:
         result = TokenBucketAlgorithmSync().check("client:tb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("token_bucket", {"key": "client:tb-precedence", "capacity": 20, "refill_rate": 1.5, "now": BASE_TIME})
+            ("token_bucket", {"key": f"{rule.name}:client:tb-precedence", "capacity": 20, "refill_rate": 1.5, "now": BASE_TIME})
         ]
         assert_result(result, limit=20, rule_name="tb_precedence_sync")
 
@@ -450,7 +458,7 @@ class TestSyncAlgorithms:
         LeakyBucketAlgorithmSync().check("client:lb-window", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("leaky_bucket", {"key": "client:lb-window", "capacity": 20, "leak_rate": 5, "now": BASE_TIME})
+            ("leaky_bucket", {"key": f"{rule.name}:client:lb-window", "capacity": 20, "leak_rate": 5, "now": BASE_TIME})
         ]
 
     def test_leaky_bucket_prefers_capacity_and_explicit_leak_rate(self, monkeypatch):
@@ -468,7 +476,7 @@ class TestSyncAlgorithms:
         result = LeakyBucketAlgorithmSync().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("leaky_bucket", {"key": "client:lb-precedence", "capacity": 20, "leak_rate": 1.5, "now": BASE_TIME})
+            ("leaky_bucket", {"key": f"{rule.name}:client:lb-precedence", "capacity": 20, "leak_rate": 1.5, "now": BASE_TIME})
         ]
         assert_result(result, limit=20, rule_name="lb_precedence_sync")
 
@@ -480,7 +488,7 @@ class TestSyncAlgorithms:
         result = LeakyBucketAlgorithmSync().check("client:lb", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("leaky_bucket", {"key": "client:lb", "capacity": 9, "leak_rate": 3, "now": BASE_TIME})
+            ("leaky_bucket", {"key": f"{rule.name}:client:lb", "capacity": 9, "leak_rate": 3, "now": BASE_TIME})
         ]
         assert_result(result, limit=9, rule_name="lb_limit_sync")
 
@@ -492,7 +500,7 @@ class TestSyncAlgorithms:
         result = LeakyBucketAlgorithmSync().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
-            ("leaky_bucket", {"key": "client:lb-precedence", "capacity": 8, "leak_rate": 2, "now": BASE_TIME})
+            ("leaky_bucket", {"key": f"{rule.name}:client:lb-precedence", "capacity": 8, "leak_rate": 2, "now": BASE_TIME})
         ]
         assert_result(result, limit=8, rule_name="lb_precedence_sync")
 

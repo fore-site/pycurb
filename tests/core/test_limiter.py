@@ -64,7 +64,7 @@ class TestRateLimiter:
 
         # Verify storage call
         assert storage.calls == [
-            ("sliding_window", {"key": "key", "limit": 5, "window": 60, "now": BASE_TIME})
+            ("sliding_window", {"key": f"{rule.name}:key", "limit": 5, "window": 60, "now": BASE_TIME})
         ]
         assert result.allowed is True
         assert result.remaining == 4
@@ -98,7 +98,7 @@ class TestRateLimiterSync:
         result = limiter.check("key", "test_rule_sync")
 
         assert storage.calls == [
-            ("sliding_window", {"key": "key", "limit": 5, "window": 60, "now": BASE_TIME})
+            ("sliding_window", {"key": f"{rule.name}:key", "limit": 5, "window": 60, "now": BASE_TIME})
         ]
         assert result.allowed is True
         assert result.remaining == 4
