@@ -69,10 +69,28 @@ class LimitRule(BaseModel):
         elif self.algorithm == "leaky_bucket":
             has_cap = self.capacity is not None
             has_limit = self.limit is not None
+            has_window = self.window is not None
+
             if not (has_cap or has_limit):
                 raise ValueError("'capacity' or 'limit' is required for leaky_bucket algorithm.")
-            if self.leak_rate is None:
-                raise ValueError("'leak_rate' is required for leaky_bucket algorithm.")
+
+            cap = self.capacity if self.capacity is not None else self.limit
+
+            if cap is None:
+                raise ValueError("'capacity' or 'limit' is required for leaky_bucket algorithm.")
+
+            if self.leak_rate is not None:
+                rate = self.leak_rate
+            else:
+                if self.window is None:
+                    raise ValueError("'window' or 'leak_rate' is required for leaky_bucket algorithm.")
+                rate = cap / self.window
+
+            if rate <= 0:
+                raise ValueError(
+                    f"'leak_rate' must be positive, got {rate}"
+                )
+
         return self
     
 

@@ -1,3 +1,6 @@
+import re
+from typing import Tuple
+
 def parse_duration(duration_str: str) -> int:
     """
     Convert a shorthand duration string into seconds.
@@ -40,4 +43,60 @@ def parse_duration(duration_str: str) -> int:
         'd': 86400
     }
     return value * multipliers[unit]
-     
+
+
+def parse_rate_limit_string(rate_str: str) -> Tuple[int, int]:
+    """
+    Parse a shorthand rate limit string into (limit, window_seconds).
+
+    Supported formats:
+        "100/s"        -> limit=100, window=1
+        "100/30s"      -> limit=100, window=30
+        "5/m"          -> limit=5, window=60
+        "5/2m"         -> limit=5, window=120
+        "10/h"         -> limit=10, window=3600
+        "10/2h"        -> limit=10, window=7200
+        "2/d"          -> limit=2, window=86400
+        "2/2d"         -> limit=2, window=172800
+        "100"          -> limit=100, window=1
+        "100/60"       -> limit=100, window=60
+
+    Raises:
+        ValueError: if format is invalid.
+    """
+    rate_str = rate_str.strip().lower()
+    if not rate_str:
+        raise ValueError("Empty rate limit string")
+
+    # Pattern: digits (limit), optional '/', then optional digits (window) and optional unit
+    # Groups: (limit, maybe window_number, maybe unit)
+    match = re.match(r'^(\d+)(?:/(\d*)([smhd]?))?$', rate_str)
+    if not match:
+        raise ValueError(f"Invalid rate limit format: '{rate_str}'")
+
+    limit = int(match.group(1))
+    window_part = match.group(2)  # may be empty string or None
+    unit = match.group(3)         # may be empty string or None
+
+     # Detect trailing slash: window_part is empty string, no unit, and there is a slash
+    if '/' in rate_str and window_part == "" and not unit:
+        raise ValueError(f"Invalid rate limit format: '{rate_str}'")
+
+    # Determine window value
+    if window_part is not None and window_part != "":
+        window = int(window_part)
+    else:
+        # No explicit window number: use 1 as base
+        window = 1
+
+    # Apply unit multiplier
+    if unit:
+        multipliers = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+        if unit not in multipliers:
+            raise ValueError(f"Unknown unit '{unit}'. Allowed: s, m, h, d")
+        window *= multipliers[unit]
+
+    if window <= 0:
+        raise ValueError("Window must be positive")
+
+    return limit, window
