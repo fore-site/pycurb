@@ -1,9 +1,39 @@
+import functools
 import math
 import binascii
 import os
-from typing import Tuple
+from typing import Tuple, Optional
+import logging
 import redis.asyncio as aioredis
+import redis.exceptions as redis_exceptions
 from .base import Storage
+
+logger = logging.getLogger(__name__)
+
+def with_fallback(func):
+    """Decorator to handle Redis exceptions and fallback to another storage or fail-open/closed."""
+    @functools.wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        try:
+            return await func(self, *args, **kwargs)
+        except(
+            redis_exceptions.ConnectionError, 
+            redis_exceptions.TimeoutError, 
+            redis_exceptions.ResponseError,
+            redis_exceptions.ReadOnlyError
+        ) as e:
+            logger.warning(f"Redis operation {func.__name__} failed: {e}")
+            if self.fallback_storage is not None:
+                logger.warning(f"Redis error: {e}. Falling back to {self.fallback_storage.__class__.__name__}.")
+                # Call the same method on fallback storage
+                fallback_method = getattr(self.fallback_storage, func.__name__)
+                return await fallback_method(*args, **kwargs)
+            elif self.fail_open:
+                logger.warning(f"Redis error: {e}. Fail-open enabled, allowing request.")
+                return True, None, None  # Allow request but no metadata
+            else:
+                raise RuntimeError("Redis storage unavailable and no fallback configured.") from e
+    return wrapper
 
 class RedisStorage(Storage):
     """Asynchronous redis storage for rate limiting."""
@@ -11,12 +41,17 @@ class RedisStorage(Storage):
     def __init__(self, 
                  redis_client: aioredis.Redis, 
                  key_prefix: str = "ratelimit:",
-                 use_redis_time: bool = False
+                 use_redis_time: bool = False,
+                 fallback_storage: Optional[Storage] = None,
+                 fail_open: bool = False
                  ) -> None:
         self.redis = redis_client
         self.prefix = key_prefix
         self.use_redis_time = use_redis_time
+        self.fallback_storage = fallback_storage
+        self.fail_open = fail_open
 
+    @with_fallback
     async def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
         # Lua script for sliding window using sorted.
         lua_script = """
@@ -64,6 +99,7 @@ class RedisStorage(Storage):
 
         return allowed, remaining, reset_at
 
+    @with_fallback
     async def fixed_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
         if self.use_redis_time:
             time_parts = await self.redis.time()
@@ -85,6 +121,7 @@ class RedisStorage(Storage):
             reset_at = window_start + window
             return True, remaining, reset_at
         
+    @with_fallback
     async def token_bucket(self, key: str, capacity: int, refill_rate: float, now: float) -> Tuple[bool, int, float]:
         # Lua script for token bucket
         lua_script = """
@@ -147,6 +184,7 @@ class RedisStorage(Storage):
 
         return allowed, remaining, reset_at
 
+    @with_fallback
     async def leaky_bucket(self, key: str, capacity: int, leak_rate: float, now: float) -> Tuple[bool, int, float]:
         # Lua script for leaky bucket (counter variant)
         lua_script = """

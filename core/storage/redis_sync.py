@@ -1,9 +1,39 @@
+import functools
 import math
 import binascii
 import os
-from typing import Tuple
+from typing import Tuple, Optional
 import redis
+import redis.exceptions as redis_exceptions
+import logging
 from .base_sync import StorageSync
+
+logger = logging.getLogger(__name__)
+
+def with_fallback(func):
+    """Decorator to handle Redis exceptions and fallback to another storage or fail-open/closed."""
+    @functools.wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        try:
+            return await func(self, *args, **kwargs)
+        except(
+            redis_exceptions.ConnectionError, 
+            redis_exceptions.TimeoutError, 
+            redis_exceptions.ResponseError,
+            redis_exceptions.ReadOnlyError
+        ) as e:
+            logger.warning(f"Redis operation {func.__name__} failed: {e}")
+            if self.fallback_storage is not None:
+                logger.warning(f"Redis error: {e}. Falling back to {self.fallback_storage.__class__.__name__}.")
+                # Call the same method on fallback storage
+                fallback_method = getattr(self.fallback_storage, func.__name__)
+                return await fallback_method(*args, **kwargs)
+            elif self.fail_open:
+                logger.warning(f"Redis error: {e}. Fail-open enabled, allowing request.")
+                return True, None, None  # Allow request but no metadata
+            else:
+                raise RuntimeError("Redis storage unavailable and no fallback configured.") from e
+    return wrapper
 
 class RedisStorageSync(StorageSync):
     """Sync redis storage for rate limiting."""
@@ -11,11 +41,15 @@ class RedisStorageSync(StorageSync):
     def __init__(self, 
                  redis_client: redis.Redis, 
                  key_prefix: str = "ratelimit:",
-                 use_redis_time: bool = False
+                 use_redis_time: bool = False,
+                 fallback_storage: Optional[StorageSync] = None,
+                 fail_open: bool = False
                  ) -> None:
         self.redis = redis_client
         self.prefix = key_prefix
         self.use_redis_time = use_redis_time
+        self.fallback_storage = fallback_storage
+        self.fail_open = fail_open
 
     def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
         # Lua script for sliding window using sorted.
@@ -57,6 +91,7 @@ class RedisStorageSync(StorageSync):
             result = script(keys=[full_key], args=["server", window, limit, unique_id])
         else:
             result = script(keys=[full_key], args=[now, window, limit, unique_id])
+        
         allowed = bool(result[0])
         remaining = int(result[1])
         reset_at = float(result[2])
@@ -206,6 +241,7 @@ class RedisStorageSync(StorageSync):
             result = script(keys=[full_key], args=["server", capacity, leak_rate])
         else:
             result = script(keys=[full_key], args=[now, capacity, leak_rate])
+        
         allowed = bool(result[0])
         remaining = int(result[1])
         reset_at = float(result[2])
