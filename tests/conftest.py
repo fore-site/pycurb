@@ -2,6 +2,7 @@ import pytest
 import pytest_asyncio
 import redis
 import redis.asyncio as aioredis
+from unittest.mock import AsyncMock, MagicMock
 from ..core.storage.memory import MemoryStorage
 from ..core.storage.memory_sync import MemoryStorageSync
 from ..core.storage.redis import RedisStorage
@@ -70,3 +71,51 @@ def sync_redis_storage():
 def storage_fixture(request):
     """Resolve the concrete storage fixture named by indirect parametrization."""
     return request.getfixturevalue(request.param)
+
+
+# Async Fixture with Mocked Redis Time
+@pytest_asyncio.fixture
+async def async_redis_storage_with_server_time():
+    if not is_redis_available():
+        pytest.skip("Redis not available, skipping redis tests.")
+    redis_client = await aioredis.from_url("redis://localhost:6379", decode_responses=True)
+    await clear_async_redis_test_keys(redis_client)
+    storage = RedisStorage(redis_client, use_redis_time=True)
+
+    time_counter = [1000.0]  # start at 1000 seconds
+    async def mock_time():
+        # Increment slightly each call to simulate real time
+        time_counter[0] += 0.1
+        seconds = int(time_counter[0])
+        microseconds = int((time_counter[0] - seconds) * 1_000_000)
+        return (seconds, microseconds)
+    
+    redis_client.time = AsyncMock(side_effect=mock_time)
+    yield storage
+    
+    await clear_async_redis_test_keys(redis_client)
+    await storage.close()
+
+
+# Sync Fixture with Mocked Redis Time
+@pytest.fixture
+def sync_redis_storage_with_server_time():
+    if not is_redis_available():
+        pytest.skip("Redis not available, skipping redis tests.")
+
+    redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+    clear_sync_redis_test_keys(redis_client)
+    storage = RedisStorageSync(redis_client, use_redis_time=True)
+    time_counter = [1000.0]
+    
+    def mock_time():
+        time_counter[0] += 0.1
+        seconds = int(time_counter[0])
+        microseconds = int((time_counter[0] - seconds) * 1_000_000)
+        return (seconds, microseconds)
+    
+    redis_client.time = MagicMock(side_effect=mock_time)
+    yield storage
+    
+    clear_sync_redis_test_keys(redis_client)
+    storage.close()

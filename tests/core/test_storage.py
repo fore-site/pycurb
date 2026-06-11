@@ -626,3 +626,97 @@ class TestLeakyBucket:
         allowed, remaining, _ = storage.leaky_bucket("lb_sync_b", capacity, leak_rate, now + 0.1)
         assert allowed is True
         assert remaining == 0
+
+
+
+class TestRedisStorageServerTimeAsync:
+    @pytest.mark.asyncio
+    async def test_sliding_window_with_server_time(self, async_redis_storage_with_server_time):
+        storage = async_redis_storage_with_server_time
+        key = "sw_server"
+        window = 10
+        limit = 3
+        # Execute 3 allowed requests
+        for i in range(limit):
+            allowed, remaining, reset_at = await storage.sliding_window(key, window, limit, now=0)  # now ignored
+            assert allowed is True
+            assert remaining == limit - i - 1
+        # Fourth request should be denied
+        allowed, remaining, reset_at = await storage.sliding_window(key, window, limit, now=0)
+        assert allowed is False
+        assert remaining == 0
+        # reset_at should be > current mocked time (which advanced)
+        assert reset_at > 1000.0
+
+    @pytest.mark.asyncio
+    async def test_fixed_window_with_server_time(self, async_redis_storage_with_server_time):
+        storage = async_redis_storage_with_server_time
+        key = "fw_server"
+        window = 10
+        limit = 2
+        # First request allowed
+        allowed, remaining, _ = await storage.fixed_window(key, window, limit, now=0)
+        assert allowed is True
+        assert remaining == 1
+        # Second allowed
+        allowed, remaining, _ = await storage.fixed_window(key, window, limit, now=0)
+        assert allowed is True
+        assert remaining == 0
+        # Third denied
+        allowed, remaining, _ = await storage.fixed_window(key, window, limit, now=0)
+        assert allowed is False
+
+    @pytest.mark.asyncio
+    async def test_token_bucket_with_server_time(self, async_redis_storage_with_server_time):
+        storage = async_redis_storage_with_server_time
+        key = "tb_server"
+        capacity = 3
+        refill_rate = 1.0
+        # Consume all tokens
+        for i in range(capacity):
+            allowed, remaining, _ = await storage.token_bucket(key, capacity, refill_rate, now=0)
+            assert allowed is True
+            assert remaining == capacity - i - 1
+        # Next denied
+        allowed, remaining, _ = await storage.token_bucket(key, capacity, refill_rate, now=0)
+        assert allowed is False
+        pass
+
+    @pytest.mark.asyncio
+    async def test_leaky_bucket_with_server_time(self, async_redis_storage_with_server_time):
+        storage = async_redis_storage_with_server_time
+        key = "lb_server"
+        capacity = 2
+        leak_rate = 1.0
+        # Fill bucket
+        for i in range(capacity):
+            allowed, remaining, _ = await storage.leaky_bucket(key, capacity, leak_rate, now=0)
+            assert allowed is True
+            assert remaining == capacity - i - 1
+        # Third denied
+        allowed, remaining, _ = await storage.leaky_bucket(key, capacity, leak_rate, now=0)
+        assert allowed is False
+
+# sync version
+class TestRedisStorageServerTimeSync:
+    def test_sliding_window_sync(self, sync_redis_storage_with_server_time):
+        storage = sync_redis_storage_with_server_time
+        key = "sw_sync_server"
+        window = 10
+        limit = 2
+        for i in range(limit):
+            allowed, remaining, _ = storage.sliding_window(key, window, limit, now=0)
+            assert allowed is True
+            assert remaining == limit - i - 1
+        allowed, remaining, _ = storage.sliding_window(key, window, limit, now=0)
+        assert allowed is False
+
+    def test_fixed_window_sync(self, sync_redis_storage_with_server_time):
+        storage = sync_redis_storage_with_server_time
+        key = "fw_sync_server"
+        window = 10
+        limit = 1
+        allowed, _, _ = storage.fixed_window(key, window, limit, now=0)
+        assert allowed is True
+        allowed, _, _ = storage.fixed_window(key, window, limit, now=0)
+        assert allowed is False
