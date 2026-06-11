@@ -1,6 +1,6 @@
 import functools
 from typing import Callable, Optional, Union, Any, cast
-from .resolver import MutableRuleResolver
+from .resolver import RuleResolver
 from .limiter import RateLimiter
 from .limiter_sync import RateLimiterSync
 from .models import LimitRule, RateLimitResult
@@ -72,13 +72,10 @@ def rate_limit(
             )
             # Add to resolver (must be mutable)
             resolver = limiter.rule_resolver
-            if not hasattr(resolver, 'add_rule'):
-                raise TypeError(
-                    "Limiter's rule resolver does not support dynamic rule addition. "
-                    "Use MutableRuleResolver when using limit_str."
-                )
-            resolver = cast(MutableRuleResolver, resolver)
-            resolver.add_rule(rule)
+            if isinstance(resolver, RuleResolver):
+                resolver.add_rule(rule)
+            else:
+                raise TypeError("The limiter's rule resolver must be an instance of RuleResolver to add new rules dynamically.")
 
         # Wrap the function
         if isinstance(limiter, RateLimiter):
