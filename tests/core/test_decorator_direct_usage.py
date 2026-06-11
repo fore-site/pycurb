@@ -1,11 +1,10 @@
 import pytest
 from typing import cast
-from ...core.resolver import MutableRuleResolver
 from ...core import (
     RateLimiter, RateLimiterSync,
-    MutableRuleResolver, static_rule_resolver,
-    rate_limit, RateLimitExceeded,
-    arg_extractor, LimitRule
+    RuleResolver, rate_limit, 
+    RateLimitExceeded, arg_extractor, 
+    LimitRule
 )
 from ...core.storage import MemoryStorage, MemoryStorageSync
 
@@ -14,10 +13,10 @@ from ...core.storage import MemoryStorage, MemoryStorageSync
 def create_async_limiter(rules=None):
     storage = MemoryStorage()
     if rules is None:
-        resolver = MutableRuleResolver()
+        resolver = RuleResolver()
     else:
         if isinstance(rules, list):
-            resolver = static_rule_resolver(rules)
+            resolver = RuleResolver(rules)
         else:
             resolver = rules
     return RateLimiter(storage, resolver)
@@ -25,10 +24,10 @@ def create_async_limiter(rules=None):
 def create_sync_limiter(rules=None):
     storage = MemoryStorageSync()
     if rules is None:
-        resolver = MutableRuleResolver()
+        resolver = RuleResolver()
     else:
         if isinstance(rules, list):
-            resolver = static_rule_resolver(rules)
+            resolver = RuleResolver(rules)
         else:
             resolver = rules
     return RateLimiterSync(storage, resolver)
@@ -41,8 +40,8 @@ class TestAsyncRateLimitDecorator:
         limiter = create_async_limiter()
         # Add a rule manually
         resolver = limiter.rule_resolver
-        mutable_resolver = cast(MutableRuleResolver, resolver)
-        mutable_resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=2, window=10))
+        if isinstance(resolver, RuleResolver):
+            resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=2, window=10))
         
         @rate_limit(limiter, rule_name="test", key_extractor=lambda user: str(user))
         async def func(user: str):
@@ -94,8 +93,8 @@ class TestAsyncRateLimitDecorator:
     async def test_raise_on_limit_false(self):
         limiter = create_async_limiter()
         resolver = limiter.rule_resolver
-        mutable_resolver = cast(MutableRuleResolver, resolver)
-        mutable_resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=1, window=10))
+        if isinstance(resolver, RuleResolver):
+            resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=1, window=10))
         @rate_limit(limiter, rule_name="test", key_extractor=lambda: "same", raise_on_limit=False)
         async def func():
             return "data"
@@ -117,16 +116,6 @@ class TestAsyncRateLimitDecorator:
         limiter = create_async_limiter()
         with pytest.raises(ValueError, match="Invalid rate limit format"):
             @rate_limit(limiter, limit_str="invalid", key_extractor=lambda: "key")
-            async def func():
-                pass
-
-    @pytest.mark.asyncio
-    async def test_limit_str_with_static_resolver_raises_type_error(self):
-        # Create limiter with static resolver (no add_rule)
-        rule = LimitRule(name="dummy", algorithm="fixed_window", limit=10, window=60)
-        limiter = create_async_limiter(rules=[rule])
-        with pytest.raises(TypeError, match="does not support dynamic rule addition"):
-            @rate_limit(limiter, limit_str="5/s", key_extractor=lambda: "key")
             async def func():
                 pass
 
@@ -155,8 +144,8 @@ class TestSyncRateLimitDecorator:
     def test_named_rule(self):
         limiter = create_sync_limiter()
         resolver = limiter.rule_resolver
-        mutable_resolver = cast(MutableRuleResolver, resolver)
-        mutable_resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=1, window=10))
+        if isinstance(resolver, RuleResolver):
+            resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=1, window=10))
         @rate_limit(limiter, rule_name="test", key_extractor=lambda: "key")
         def func():
             return "ok"
@@ -187,8 +176,8 @@ class TestSyncRateLimitDecorator:
     def test_raise_on_limit_false(self):
         limiter = create_sync_limiter()
         resolver = limiter.rule_resolver
-        mutable_resolver = cast(MutableRuleResolver, resolver)
-        mutable_resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=1, window=10))
+        if isinstance(resolver, RuleResolver):
+            resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=1, window=10))
         @rate_limit(limiter, rule_name="test", key_extractor=lambda: "same", raise_on_limit=False)
         def func():
             return "data"
@@ -208,14 +197,6 @@ class TestSyncRateLimitDecorator:
         limiter = create_sync_limiter()
         with pytest.raises(ValueError):
             @rate_limit(limiter, limit_str="bad", key_extractor=lambda: "key")
-            def func():
-                pass
-
-    def test_limit_str_with_static_resolver_raises(self):
-        rule = LimitRule(name="dummy", algorithm="fixed_window", limit=10, window=60)
-        limiter = create_sync_limiter(rules=[rule])
-        with pytest.raises(TypeError):
-            @rate_limit(limiter, limit_str="5/s", key_extractor=lambda: "key")
             def func():
                 pass
 

@@ -1,8 +1,7 @@
 import pytest
 from ...core import (
     RateLimiter, RateLimiterSync,
-    MutableRuleResolver, static_rule_resolver,
-    LimitRule
+    RuleResolver, LimitRule
 )
 from ...core.storage import MemoryStorage, MemoryStorageSync
 
@@ -40,7 +39,7 @@ class TestAsyncManualUsage:
 
     @pytest.mark.asyncio
     async def test_mutable_resolver(self):
-        resolver = MutableRuleResolver()
+        resolver = RuleResolver()
         limiter = create_async_limiter(resolver)
         rule = LimitRule(name="test", algorithm="sliding_window", limit=3, window=10)
         resolver.add_rule(rule)
@@ -61,7 +60,7 @@ class TestAsyncManualUsage:
 
     @pytest.mark.asyncio
     async def test_remove_rule(self):
-        resolver = MutableRuleResolver()
+        resolver = RuleResolver()
         limiter = create_async_limiter(resolver)
         rule = LimitRule(name="temp", algorithm="fixed_window", limit=1, window=10)
         resolver.add_rule(rule)
@@ -74,7 +73,7 @@ class TestAsyncManualUsage:
     @pytest.mark.asyncio
     async def test_static_resolver_function(self):
         rules = [LimitRule(name="api", algorithm="token_bucket", capacity=5, refill_rate=1)]
-        resolver = static_rule_resolver(rules)
+        resolver = RuleResolver(rules)
         limiter = create_async_limiter(resolver)
         for i in range(5):
             result = await limiter.check("key", "api")
@@ -114,7 +113,7 @@ class TestSyncManualUsage:
         assert result.allowed is False
 
     def test_mutable_resolver(self):
-        resolver = MutableRuleResolver()
+        resolver = RuleResolver()
         limiter = create_sync_limiter(resolver)
         rule = LimitRule(name="test", algorithm="fixed_window", limit=3, window=10)
         resolver.add_rule(rule)
@@ -126,7 +125,7 @@ class TestSyncManualUsage:
 
     def test_static_resolver_function(self):
         rules = [LimitRule(name="api", algorithm="token_bucket", capacity=2, refill_rate=1)]
-        resolver = static_rule_resolver(rules)
+        resolver = RuleResolver(rules)
         limiter = create_sync_limiter(resolver)
         result = limiter.check("key", "api")
         assert result.allowed is True
