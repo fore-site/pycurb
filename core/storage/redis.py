@@ -8,15 +8,28 @@ from .base import Storage
 class RedisStorage(Storage):
     """Asynchronous redis storage for rate limiting."""
 
-    def __init__(self, redis_client: aioredis.Redis, key_prefix: str = "ratelimit:") -> None:
+    def __init__(self, 
+                 redis_client: aioredis.Redis, 
+                 key_prefix: str = "ratelimit:",
+                 use_redis_time: bool = False
+                 ) -> None:
         self.redis = redis_client
         self.prefix = key_prefix
+        self.use_redis_time = use_redis_time
 
     async def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
         # Lua script for sliding window using sorted.
         lua_script = """
         local key = KEYS[1]
-        local now = tonumber(ARGV[1])
+        local now = ARGV[1]
+
+        if now == 'server' then
+            local time_parts = redis.call('TIME');
+            now = tonumber(time_parts[1]) + tonumber(time_parts[2]) / 1000000
+        else
+            now = tonumber(now)
+        end
+
         local window = tonumber(ARGV[2])
         local limit = tonumber(ARGV[3])
         local unique_id = ARGV[4]
@@ -39,7 +52,12 @@ class RedisStorage(Storage):
         unique_id = binascii.hexlify(os.urandom(8)).decode()
         script = self.redis.register_script(lua_script)
         full_key = self.prefix + "sliding:" + key
-        result = await script(keys=[full_key], args=[now, window, limit, unique_id])
+
+        if self.use_redis_time:
+            result = await script(keys=[full_key], args=["server", window, limit, unique_id])
+        else:
+            result = await script(keys=[full_key], args=[now, window, limit, unique_id])
+        
         allowed = bool(result[0])
         remaining = int(result[1])
         reset_at = float(result[2])
@@ -47,6 +65,10 @@ class RedisStorage(Storage):
         return allowed, remaining, reset_at
 
     async def fixed_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
+        if self.use_redis_time:
+            time_parts = await self.redis.time()
+            now = time_parts[0] + time_parts[1] / 1_000_000
+
         window_start = math.floor(now / window) * window
         window_key = f"{self.prefix}fixed:{key}:{window_start}"
 
@@ -67,9 +89,17 @@ class RedisStorage(Storage):
         # Lua script for token bucket
         lua_script = """
         local key = KEYS[1]
-        local capacity = tonumber(ARGV[1])
-        local rate = tonumber(ARGV[2])
-        local now = tonumber(ARGV[3])
+        local now = ARGV[1]
+
+        if now == 'server' then
+            local time_parts = redis.call('TIME');
+            now = tonumber(time_parts[1]) + tonumber(time_parts[2]) / 1000000
+        else
+            now = tonumber(now)
+        end
+
+        local capacity = tonumber(ARGV[2])
+        local rate = tonumber(ARGV[3])
 
         local data = redis.call('GET', key)
         local tokens, last_refill
@@ -106,7 +136,11 @@ class RedisStorage(Storage):
         """
         script = self.redis.register_script(lua_script)
         full_key = self.prefix + "token:" + key
-        result = await script(keys=[full_key], args=[capacity, refill_rate, now])
+
+        if self.use_redis_time:
+            result = await script(keys=[full_key], args=["server", capacity, refill_rate])
+        else:
+            result = await script(keys=[full_key], args=[now, capacity, refill_rate])
         allowed = bool(result[0])
         remaining = int(result[1])
         reset_at = float(result[2])
@@ -117,9 +151,17 @@ class RedisStorage(Storage):
         # Lua script for leaky bucket (counter variant)
         lua_script = """
         local key = KEYS[1]
-        local capacity = tonumber(ARGV[1])
-        local rate = tonumber(ARGV[2])
-        local now = tonumber(ARGV[3])
+        local now = ARGV[1]
+
+        if now == 'server' then
+            local time_parts = redis.call('TIME');
+            now = tonumber(time_parts[1]) + tonumber(time_parts[2]) / 1000000
+        else
+            now = tonumber(now)
+        end
+
+        local capacity = tonumber(ARGV[2])
+        local rate = tonumber(ARGV[3])
 
         local data = redis.call('GET', key)
         local queue_size, last_leak
@@ -160,7 +202,12 @@ class RedisStorage(Storage):
         """
         script = self.redis.register_script(lua_script)
         full_key = self.prefix + 'leaky:' + key
-        result = await script(keys=[full_key], args=[capacity, leak_rate, now])
+
+        if self.use_redis_time:
+            result = await script(keys=[full_key], args=["server", capacity, leak_rate])
+        else:
+            result = await script(keys=[full_key], args=[now, capacity, leak_rate])
+    
         allowed = bool(result[0])
         remaining = int(result[1])
         reset_at = float(result[2])
