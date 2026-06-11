@@ -13,26 +13,37 @@ logger = logging.getLogger(__name__)
 def with_fallback(func):
     """Decorator to handle Redis exceptions and fallback to another storage or fail-open/closed."""
     @functools.wraps(func)
-    async def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args, **kwargs):
         try:
-            return await func(self, *args, **kwargs)
-        except(
-            redis_exceptions.ConnectionError, 
-            redis_exceptions.TimeoutError, 
+            return func(self, *args, **kwargs)
+        except (
+            redis_exceptions.ConnectionError,
+            redis_exceptions.TimeoutError,
             redis_exceptions.ResponseError,
-            redis_exceptions.ReadOnlyError
+            redis_exceptions.ReadOnlyError,
         ) as e:
             logger.warning(f"Redis operation {func.__name__} failed: {e}")
             if self.fallback_storage is not None:
                 logger.warning(f"Redis error: {e}. Falling back to {self.fallback_storage.__class__.__name__}.")
-                # Call the same method on fallback storage
+                # Call the same method on fallback storage (sync)
                 fallback_method = getattr(self.fallback_storage, func.__name__)
-                return await fallback_method(*args, **kwargs)
-            elif self.fail_open:
+                return fallback_method(*args, **kwargs)
+
+            # Determine 'now' from args/kwargs if present (last positional arg is expected to be `now`)
+            now = kwargs.get('now') if 'now' in kwargs else (args[-1] if args else None)
+
+            if self.fail_open:
                 logger.warning(f"Redis error: {e}. Fail-open enabled, allowing request.")
-                return True, None, None  # Allow request but no metadata
+                try:
+                    reset_at = float(now) + 3600 if now is not None else float('inf')
+                except Exception:
+                    reset_at = float('inf')
+                # Provide a large remaining default so callers can proceed conservatively
+                return True, 9999, reset_at
             else:
-                raise RuntimeError("Redis storage unavailable and no fallback configured.") from e
+                logger.warning(f"Redis error: {e}. Fail-closed enabled, denying request.")
+                return False, 0, float('inf')
+
     return wrapper
 
 class RedisStorageSync(StorageSync):
@@ -51,6 +62,7 @@ class RedisStorageSync(StorageSync):
         self.fallback_storage = fallback_storage
         self.fail_open = fail_open
 
+    @with_fallback
     def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
         # Lua script for sliding window using sorted.
         lua_script = """
@@ -98,6 +110,7 @@ class RedisStorageSync(StorageSync):
 
         return allowed, remaining, reset_at
 
+    @with_fallback
     def fixed_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
         if self.use_redis_time:
             time_parts = self.redis.time()
@@ -119,6 +132,7 @@ class RedisStorageSync(StorageSync):
             reset_at = window_start + window
             return True, remaining, reset_at
         
+    @with_fallback
     def token_bucket(self, key: str, capacity: int, refill_rate: float, now: float) -> Tuple[bool, int, float]:
         # Lua script for token bucket
         lua_script = """
@@ -181,6 +195,7 @@ class RedisStorageSync(StorageSync):
 
         return allowed, remaining, reset_at
 
+    @with_fallback
     def leaky_bucket(self, key: str, capacity: int, leak_rate: float, now: float) -> Tuple[bool, int, float]:
         # Lua script for leaky bucket (counter variant)
         lua_script = """

@@ -4,6 +4,8 @@ import binascii
 import os
 from typing import Tuple, Optional
 import logging
+import asyncio
+import inspect
 import redis.asyncio as aioredis
 import redis.exceptions as redis_exceptions
 from .base import Storage
@@ -16,23 +18,33 @@ def with_fallback(func):
     async def wrapper(self, *args, **kwargs):
         try:
             return await func(self, *args, **kwargs)
-        except(
-            redis_exceptions.ConnectionError, 
-            redis_exceptions.TimeoutError, 
+        except (
+            redis_exceptions.ConnectionError,
+            redis_exceptions.TimeoutError,
             redis_exceptions.ResponseError,
-            redis_exceptions.ReadOnlyError
+            redis_exceptions.ReadOnlyError,
         ) as e:
             logger.warning(f"Redis operation {func.__name__} failed: {e}")
             if self.fallback_storage is not None:
                 logger.warning(f"Redis error: {e}. Falling back to {self.fallback_storage.__class__.__name__}.")
-                # Call the same method on fallback storage
+                # Call the same method on fallback storage (async)
                 fallback_method = getattr(self.fallback_storage, func.__name__)
                 return await fallback_method(*args, **kwargs)
-            elif self.fail_open:
+
+            # Determine 'now' from args/kwargs if present (last positional arg is expected to be `now`)
+            now = kwargs.get('now') if 'now' in kwargs else (args[-1] if args else None)
+
+            if self.fail_open:
                 logger.warning(f"Redis error: {e}. Fail-open enabled, allowing request.")
-                return True, None, None  # Allow request but no metadata
+                try:
+                    reset_at = float(now) + 3600 if now is not None else float('inf')
+                except Exception:
+                    reset_at = float('inf')
+                return True, 9999, reset_at
             else:
-                raise RuntimeError("Redis storage unavailable and no fallback configured.") from e
+                logger.warning(f"Redis error: {e}. Fail-closed enabled, denying request.")
+                return False, 0, float('inf')
+
     return wrapper
 
 class RedisStorage(Storage):
@@ -86,6 +98,8 @@ class RedisStorage(Storage):
         """
         unique_id = binascii.hexlify(os.urandom(8)).decode()
         script = self.redis.register_script(lua_script)
+        if asyncio.iscoroutine(script) or inspect.isawaitable(script):
+            script = await script
         full_key = self.prefix + "sliding:" + key
 
         if self.use_redis_time:
@@ -172,6 +186,8 @@ class RedisStorage(Storage):
         end
         """
         script = self.redis.register_script(lua_script)
+        if asyncio.iscoroutine(script) or inspect.isawaitable(script):
+            script = await script
         full_key = self.prefix + "token:" + key
 
         if self.use_redis_time:
@@ -239,6 +255,8 @@ class RedisStorage(Storage):
         end
         """
         script = self.redis.register_script(lua_script)
+        if asyncio.iscoroutine(script) or inspect.isawaitable(script):
+            script = await script
         full_key = self.prefix + 'leaky:' + key
 
         if self.use_redis_time:
