@@ -1,6 +1,6 @@
 import pytest
-from ...core import RateLimiter, RateLimiterSync, LimitRule
-from ...core.algorithms import sliding_window as sw_module
+from ...core import RateLimiter, AsyncRateLimiter, LimitRule
+from ...core.algorithms import sliding_window_async as sw_module
 
 
 BASE_TIME = 1_700_000_000.25
@@ -51,14 +51,14 @@ class SyncSpyStorage:
         return self.response
 
 
-class TestRateLimiter:
+class TestRateLimiterAsync:
     @pytest.mark.asyncio
     async def test_check_uses_correct_algorithm_and_rule(self, monkeypatch):
         # Mock time
         monkeypatch.setattr(sw_module.time, "time", lambda: BASE_TIME)
         storage = AsyncSpyStorage(response=(True, 4, RESET_AT))
         rule = LimitRule(name="test_rule", algorithm="sliding_window", limit=5, window=60)
-        limiter = RateLimiter(storage, [rule])  # type: ignore[arg-type]
+        limiter = AsyncRateLimiter(storage, [rule])  # type: ignore[arg-type]
 
         result = await limiter.check("key", "test_rule")
 
@@ -73,7 +73,7 @@ class TestRateLimiter:
     @pytest.mark.asyncio
     async def test_unknown_rule_raises_value_error(self):
         storage = AsyncSpyStorage()
-        limiter = RateLimiter(storage, [])  # type: ignore[arg-type]
+        limiter = AsyncRateLimiter(storage, [])  # type: ignore[arg-type]
 
         with pytest.raises(ValueError, match="Rule 'unknown' not found"):
             await limiter.check("key", "unknown")
@@ -83,17 +83,17 @@ class TestRateLimiter:
         storage = AsyncSpyStorage()
         # Create a rule with an algorithm that is not in the registry
         rule = LimitRule.model_construct(name="bad", algorithm="unsupported", limit=10, window=60)
-        limiter = RateLimiter(storage, [rule])  # type: ignore[arg-type]
+        limiter = AsyncRateLimiter(storage, [rule])  # type: ignore[arg-type]
 
         with pytest.raises(ValueError, match="Unsupported algorithm 'unsupported'"):
             await limiter.check("key", "bad")
 
-class TestRateLimiterSync:
+class TestRateLimiter:
     def test_check_uses_correct_algorithm_and_rule(self, monkeypatch):
         monkeypatch.setattr(sw_module.time, "time", lambda: BASE_TIME)
         storage = SyncSpyStorage(response=(True, 4, RESET_AT))
         rule = LimitRule(name="test_rule_sync", algorithm="sliding_window", limit=5, window=60)
-        limiter = RateLimiterSync(storage, [rule])  # type: ignore[arg-type]
+        limiter = RateLimiter(storage, [rule])  # type: ignore[arg-type]
 
         result = limiter.check("key", "test_rule_sync")
 
@@ -105,7 +105,7 @@ class TestRateLimiterSync:
 
     def test_unknown_rule_raises_value_error(self):
         storage = SyncSpyStorage()
-        limiter = RateLimiterSync(storage, [])  # type: ignore[arg-type]
+        limiter = RateLimiter(storage, [])  # type: ignore[arg-type]
 
         with pytest.raises(ValueError, match="Rule 'unknown' not found"):
             limiter.check("key", "unknown")
@@ -113,7 +113,7 @@ class TestRateLimiterSync:
     def test_unsupported_algorithm_raises_value_error(self):
         storage = SyncSpyStorage()
         rule = LimitRule.model_construct(name="bad", algorithm="unsupported", limit=10, window=60)
-        limiter = RateLimiterSync(storage, [rule])  # type: ignore[arg-type]
+        limiter = RateLimiter(storage, [rule])  # type: ignore[arg-type]
 
         with pytest.raises(ValueError, match="Unsupported algorithm 'unsupported'"):
             limiter.check("key", "bad")

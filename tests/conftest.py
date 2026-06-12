@@ -3,10 +3,12 @@ import pytest_asyncio
 import redis
 import redis.asyncio as aioredis
 from unittest.mock import AsyncMock, MagicMock
-from ..core.storage.memory import MemoryStorage
-from ..core.storage.memory_sync import MemoryStorageSync
-from ..core.storage.redis import RedisStorage
-from ..core.storage.redis_sync import RedisStorageSync
+from ..core.storage import (
+    RedisStorage,
+    AsyncRedisStorage,
+    MemoryStorage,
+    AsyncMemoryStorage
+)
 
 def is_redis_available(host='localhost', port=6379):
     try:
@@ -32,7 +34,7 @@ def clear_sync_redis_test_keys(redis_client):
 
 @pytest_asyncio.fixture
 async def async_memory_storage():
-    storage = MemoryStorage()
+    storage = AsyncMemoryStorage()
     yield storage
     await storage.close()
 
@@ -42,7 +44,7 @@ async def async_redis_storage():
         pytest.skip("Redis not available, skipping redis tests.")
     redis_client = aioredis.from_url("redis://localhost:6379", decode_responses=True)
     await clear_async_redis_test_keys(redis_client)
-    storage = RedisStorage(redis_client, key_prefix="test:")
+    storage = AsyncRedisStorage(redis_client, key_prefix="test:")
     yield storage
     await clear_async_redis_test_keys(redis_client)
     await storage.close()
@@ -51,7 +53,7 @@ async def async_redis_storage():
 
 @pytest.fixture
 def sync_memory_storage():
-    storage = MemoryStorageSync()
+    storage = MemoryStorage()
     yield storage
     storage.close()
 
@@ -61,7 +63,7 @@ def sync_redis_storage():
         pytest.skip("Redis not available, skipping redis tests.")
     redis_client = redis.from_url("redis://localhost:6379", decode_responses=True)
     clear_sync_redis_test_keys(redis_client)
-    storage = RedisStorageSync(redis_client, key_prefix="test:")
+    storage = RedisStorage(redis_client, key_prefix="test:")
     yield storage
     clear_sync_redis_test_keys(redis_client)
     storage.close()
@@ -80,7 +82,7 @@ async def async_redis_storage_with_server_time():
         pytest.skip("Redis not available, skipping redis tests.")
     redis_client = await aioredis.from_url("redis://localhost:6379", decode_responses=True)
     await clear_async_redis_test_keys(redis_client)
-    storage = RedisStorage(redis_client, use_redis_time=True)
+    storage = AsyncRedisStorage(redis_client, use_redis_time=True)
 
     time_counter = [1000.0]  # start at 1000 seconds
     async def mock_time():
@@ -105,7 +107,7 @@ def sync_redis_storage_with_server_time():
 
     redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
     clear_sync_redis_test_keys(redis_client)
-    storage = RedisStorageSync(redis_client, use_redis_time=True)
+    storage = RedisStorage(redis_client, use_redis_time=True)
     time_counter = [1000.0]
     
     def mock_time():

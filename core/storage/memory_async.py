@@ -1,32 +1,32 @@
-import threading
+import asyncio
 from collections import deque
 from typing import Dict, Deque, Tuple
-from .base_sync import StorageSync
+from .base_async import AsyncStorage
 import math
 
-class MemoryStorageSync(StorageSync):
-    """Synchronous in-memory storage for rate limiting."""
+class AsyncMemoryStorage(AsyncStorage):
+    """Async in-memory storage for rate limiting."""
 
     def __init__(self) -> None:
         self._sliding: Dict[str, Deque[float]] = {}
         self._fixed: Dict[str, Tuple[int, float]] = {}
         self._token: Dict[str, Tuple[float, float]] = {}
         self._leaky: Dict[str, Tuple[int, float]] = {}
-        self._key_locks: Dict[str, threading.Lock] = {}
-        self._global_lock= threading.Lock()
+        self._key_locks: Dict[str, asyncio.Lock] = {}
+        self._global_lock= asyncio.Lock()
 
-    def get_lock(self, key: str) -> threading.Lock:
+    async def get_lock(self, key: str) -> asyncio.Lock:
         """Get or create a lock for the given key."""
         if key in self._key_locks:
             return self._key_locks[key]
-        with self._global_lock:
+        async with self._global_lock:
             if key not in self._key_locks:
-                self._key_locks[key] = threading.Lock()
+                self._key_locks[key] = asyncio.Lock()
         return self._key_locks[key]
 
-    def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
-        lock = self.get_lock(key)
-        with lock:
+    async def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
+        lock = await self.get_lock(key)
+        async with lock:
             q = self._sliding.setdefault(key, deque())
 
             while q and q[0] <= now - window:
@@ -42,9 +42,9 @@ class MemoryStorageSync(StorageSync):
                 reset_at = q[0] + window
                 return False, 0, reset_at
             
-    def fixed_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
-        lock = self.get_lock(key)
-        with lock:
+    async def fixed_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
+        lock = await self.get_lock(key)
+        async with lock:
             computed_window_start = math.floor(now / window) * window
 
             count, stored_window_start = self._fixed.get(key, (0, computed_window_start))
@@ -64,9 +64,9 @@ class MemoryStorageSync(StorageSync):
                 reset_at = stored_window_start + window
                 return False, 0, reset_at
             
-    def token_bucket(self, key: str, capacity: int, refill_rate: float, now: float) -> Tuple[bool, int, float]:
-        lock = self.get_lock(key)
-        with lock:
+    async def token_bucket(self, key: str, capacity: int, refill_rate: float, now: float) -> Tuple[bool, int, float]:
+        lock = await self.get_lock(key)
+        async with lock:
             tokens, last_refill_time = self._token.get(key, (float(capacity), now))
 
             time_elapsed = now - last_refill_time
@@ -85,9 +85,9 @@ class MemoryStorageSync(StorageSync):
                 reset_at = now + (1 - new_tokens) / refill_rate
                 return False, 0, reset_at
             
-    def leaky_bucket(self, key: str, capacity: int, leak_rate: float, now: float) -> Tuple[bool, int, float]:
-        lock = self.get_lock(key)
-        with lock:
+    async def leaky_bucket(self, key: str, capacity: int, leak_rate: float, now: float) -> Tuple[bool, int, float]:
+        lock = await self.get_lock(key)
+        async with lock:
             queue_size, last_leak_time = self._leaky.get(key, (0, now))
 
             leaked = math.floor((now - last_leak_time) * leak_rate)
@@ -108,5 +108,5 @@ class MemoryStorageSync(StorageSync):
             else:
                 return False, 0, now + (1 / leak_rate)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         return None

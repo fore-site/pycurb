@@ -1,18 +1,19 @@
 import pytest
 from ...core import (
-    RateLimiter, RateLimiterSync,
-    RuleResolver, LimitRule
+    RateLimiter, AsyncRateLimiter,
+    RuleResolver, AsyncRuleResolver,
+    LimitRule
 )
-from ...core.storage import MemoryStorage, MemoryStorageSync
+from ...core.storage import MemoryStorage, AsyncMemoryStorage
 
 # Helpers
 def create_async_limiter(rules_or_resolver):
-    storage = MemoryStorage()
-    return RateLimiter(storage, rules_or_resolver)
+    storage = AsyncMemoryStorage()
+    return AsyncRateLimiter(storage, rules_or_resolver)
 
 def create_sync_limiter(rules_or_resolver):
-    storage = MemoryStorageSync()
-    return RateLimiterSync(storage, rules_or_resolver)
+    storage = MemoryStorage()
+    return RateLimiter(storage, rules_or_resolver)
 
 # Async Tests
 
@@ -39,10 +40,10 @@ class TestAsyncManualUsage:
 
     @pytest.mark.asyncio
     async def test_mutable_resolver(self):
-        resolver = RuleResolver()
+        resolver = AsyncRuleResolver()
         limiter = create_async_limiter(resolver)
         rule = LimitRule(name="test", algorithm="sliding_window", limit=3, window=10)
-        resolver.add_rule(rule)
+        await resolver.add_rule(rule)
         
         for i in range(3):
             result = await limiter.check("key", "test")
@@ -53,27 +54,29 @@ class TestAsyncManualUsage:
 
         # Replace rule with higher limit
         new_rule = LimitRule(name="test", algorithm="sliding_window", limit=5, window=10)
-        resolver.add_rule(new_rule)
+        await resolver.add_rule(new_rule)
         # Now should allow again (new window starts fresh or count reset)
         result = await limiter.check("key", "test")
         assert result.allowed is True
 
     @pytest.mark.asyncio
     async def test_remove_rule(self):
-        resolver = RuleResolver()
+        resolver = AsyncRuleResolver()
         limiter = create_async_limiter(resolver)
         rule = LimitRule(name="temp", algorithm="fixed_window", limit=1, window=10)
-        resolver.add_rule(rule)
+        
+        await resolver.add_rule(rule)
         result = await limiter.check("key", "temp")
         assert result.allowed is True
-        resolver.remove_rule("temp")
+        
+        await resolver.remove_rule("temp")
         with pytest.raises(ValueError, match="Rule 'temp' not found"):
             await limiter.check("key", "temp")
 
     @pytest.mark.asyncio
     async def test_static_resolver_function(self):
         rules = [LimitRule(name="api", algorithm="token_bucket", capacity=5, refill_rate=1)]
-        resolver = RuleResolver(rules)
+        resolver = AsyncRuleResolver(rules)
         limiter = create_async_limiter(resolver)
         for i in range(5):
             result = await limiter.check("key", "api")

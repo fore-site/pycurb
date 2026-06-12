@@ -2,22 +2,22 @@ import pytest
 
 from ...core.algorithms import (
     FixedWindowAlgorithm,
-    FixedWindowAlgorithmSync,
+    AsyncFixedWindowAlgorithm,
     LeakyBucketAlgorithm,
-    LeakyBucketAlgorithmSync,
+    AsyncLeakyBucketAlgorithm,
     SlidingWindowAlgorithm,
-    SlidingWindowAlgorithmSync,
+    AsyncSlidingWindowAlgorithm,
     TokenBucketAlgorithm,
-    TokenBucketAlgorithmSync,
+    AsyncTokenBucketAlgorithm,
 )
-from ...core.algorithms import fixed_window as fixed_window_module
-from ...core.algorithms import fixed_window_sync as fixed_window_sync_module
-from ...core.algorithms import leaky_bucket as leaky_bucket_module
-from ...core.algorithms import leaky_bucket_sync as leaky_bucket_sync_module
-from ...core.algorithms import sliding_window as sliding_window_module
-from ...core.algorithms import sliding_window_sync as sliding_window_sync_module
-from ...core.algorithms import token_bucket as token_bucket_module
-from ...core.algorithms import token_bucket_sync as token_bucket_sync_module
+from ...core.algorithms import fixed_window_async as fixed_window_module
+from ...core.algorithms import fixed_window as fixed_window_sync_module
+from ...core.algorithms import leaky_bucket_async as leaky_bucket_module
+from ...core.algorithms import leaky_bucket as leaky_bucket_sync_module
+from ...core.algorithms import sliding_window_async as sliding_window_module
+from ...core.algorithms import sliding_window as sliding_window_sync_module
+from ...core.algorithms import token_bucket_async as token_bucket_module
+from ...core.algorithms import token_bucket as token_bucket_sync_module
 from ...core.models import LimitRule, RateLimitResult
 
 
@@ -97,28 +97,28 @@ class TestAsyncAlgorithms:
         ("algorithm", "module", "rule", "storage_method", "expected_kwargs"),
         [
             (
-                SlidingWindowAlgorithm(),
+                AsyncSlidingWindowAlgorithm(),
                 sliding_window_module,
                 LimitRule(name="sw", algorithm="sliding_window", limit=5, window=60),
                 "sliding_window",
                 {"key": "client:1", "limit": 5, "window": 60, "now": BASE_TIME},
             ),
             (
-                FixedWindowAlgorithm(),
+                AsyncFixedWindowAlgorithm(),
                 fixed_window_module,
                 LimitRule(name="fw", algorithm="fixed_window", limit=10, window=30),
                 "fixed_window",
                 {"key": "client:1", "limit": 10, "window": 30, "now": BASE_TIME},
             ),
             (
-                TokenBucketAlgorithm(),
+                AsyncTokenBucketAlgorithm(),
                 token_bucket_module,
                 LimitRule(name="tb", algorithm="token_bucket", capacity=7, refill_rate=2.5),
                 "token_bucket",
                 {"key": "client:1", "capacity": 7, "refill_rate": 2.5, "now": BASE_TIME},
             ),
             (
-                LeakyBucketAlgorithm(),
+                AsyncLeakyBucketAlgorithm(),
                 leaky_bucket_module,
                 LimitRule(name="lb", algorithm="leaky_bucket", capacity=3, leak_rate=0.75),
                 "leaky_bucket",
@@ -142,25 +142,25 @@ class TestAsyncAlgorithms:
         ("algorithm", "module", "rule", "expected_limit"),
         [
             (
-                SlidingWindowAlgorithm(),
+                AsyncSlidingWindowAlgorithm(),
                 sliding_window_module,
                 LimitRule(name="sw_denied", algorithm="sliding_window", limit=2, window=60),
                 2,
             ),
             (
-                FixedWindowAlgorithm(),
+                AsyncFixedWindowAlgorithm(),
                 fixed_window_module,
                 LimitRule(name="fw_denied", algorithm="fixed_window", limit=2, window=60),
                 2,
             ),
             (
-                TokenBucketAlgorithm(),
+                AsyncTokenBucketAlgorithm(),
                 token_bucket_module,
                 LimitRule(name="tb_denied", algorithm="token_bucket", capacity=2, refill_rate=1),
                 2,
             ),
             (
-                LeakyBucketAlgorithm(),
+                AsyncLeakyBucketAlgorithm(),
                 leaky_bucket_module,
                 LimitRule(name="lb_denied", algorithm="leaky_bucket", capacity=2, leak_rate=1),
                 2,
@@ -181,7 +181,7 @@ class TestAsyncAlgorithms:
         rule = LimitRule(name="tb_limit", algorithm="token_bucket", limit=12, refill_rate=3)
         storage = AsyncSpyStorage()
 
-        result = await TokenBucketAlgorithm().check("client:tb", rule, storage)  # type: ignore[arg-type]
+        result = await AsyncTokenBucketAlgorithm().check("client:tb", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("token_bucket", {"key": f"{rule.name}:client:tb", "capacity": 12, "refill_rate": 3, "now": BASE_TIME})
@@ -194,7 +194,7 @@ class TestAsyncAlgorithms:
         rule = LimitRule(name="tb_window", algorithm="token_bucket", capacity=20, window=4)
         storage = AsyncSpyStorage()
 
-        await TokenBucketAlgorithm().check("client:tb-window", rule, storage)  # type: ignore[arg-type]
+        await AsyncTokenBucketAlgorithm().check("client:tb-window", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("token_bucket", {"key": f"{rule.name}:client:tb-window", "capacity": 20, "refill_rate": 5, "now": BASE_TIME})
@@ -213,7 +213,7 @@ class TestAsyncAlgorithms:
         )
         storage = AsyncSpyStorage()
 
-        result = await TokenBucketAlgorithm().check("client:tb-precedence", rule, storage)  # type: ignore[arg-type]
+        result = await AsyncTokenBucketAlgorithm().check("client:tb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("token_bucket", {"key": f"{rule.name}:client:tb-precedence", "capacity": 20, "refill_rate": 1.5, "now": BASE_TIME})
@@ -226,7 +226,7 @@ class TestAsyncAlgorithms:
         rule = LimitRule(name="lb_window", algorithm="leaky_bucket", capacity=20, window=4)
         storage = AsyncSpyStorage()
 
-        await LeakyBucketAlgorithm().check("client:lb-window", rule, storage)  # type: ignore[arg-type]
+        await AsyncLeakyBucketAlgorithm().check("client:lb-window", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("leaky_bucket", {"key": f"{rule.name}:client:lb-window", "capacity": 20, "leak_rate": 5, "now": BASE_TIME})
@@ -245,7 +245,7 @@ class TestAsyncAlgorithms:
         )
         storage = AsyncSpyStorage()
 
-        result = await LeakyBucketAlgorithm().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
+        result = await AsyncLeakyBucketAlgorithm().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("leaky_bucket", {"key": f"{rule.name}:client:lb-precedence", "capacity": 20, "leak_rate": 1.5, "now": BASE_TIME})
@@ -258,7 +258,7 @@ class TestAsyncAlgorithms:
         rule = LimitRule(name="lb_limit", algorithm="leaky_bucket", limit=9, leak_rate=3)
         storage = AsyncSpyStorage()
 
-        result = await LeakyBucketAlgorithm().check("client:lb", rule, storage)  # type: ignore[arg-type]
+        result = await AsyncLeakyBucketAlgorithm().check("client:lb", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("leaky_bucket", {"key": f"{rule.name}:client:lb", "capacity": 9, "leak_rate": 3, "now": BASE_TIME})
@@ -270,52 +270,52 @@ class TestAsyncAlgorithms:
         ("algorithm", "rule", "message"),
         [
             (
-                SlidingWindowAlgorithm(),
+                AsyncSlidingWindowAlgorithm(),
                 LimitRule.model_construct(name="bad_sw", algorithm="sliding_window", limit=None, window=60),
                 "limit",
             ),
             (
-                SlidingWindowAlgorithm(),
+                AsyncSlidingWindowAlgorithm(),
                 LimitRule.model_construct(name="bad_sw", algorithm="sliding_window", limit=10, window=None),
                 "window",
             ),
             (
-                FixedWindowAlgorithm(),
+                AsyncFixedWindowAlgorithm(),
                 LimitRule.model_construct(name="bad_fw", algorithm="fixed_window", limit=None, window=60),
                 "limit",
             ),
             (
-                FixedWindowAlgorithm(),
+                AsyncFixedWindowAlgorithm(),
                 LimitRule.model_construct(name="bad_fw", algorithm="fixed_window", limit=10, window=None),
                 "window",
             ),
             (
-                TokenBucketAlgorithm(),
+                AsyncTokenBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_tb", algorithm="token_bucket", capacity=None, limit=None, refill_rate=1),
                 "capacity",
             ),
             (
-                TokenBucketAlgorithm(),
+                AsyncTokenBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_tb", algorithm="token_bucket", capacity=10, refill_rate=None, window=None),
                 "refill_rate",
             ),
             (
-                TokenBucketAlgorithm(),
+                AsyncTokenBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_tb", algorithm="token_bucket", capacity=10, refill_rate=0),
                 "positive",
             ),
             (
-                LeakyBucketAlgorithm(),
+                AsyncLeakyBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_lb", algorithm="leaky_bucket", capacity=None, limit=None, leak_rate=1),
                 "capacity",
             ),
             (
-                LeakyBucketAlgorithm(),
+                AsyncLeakyBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_lb", algorithm="leaky_bucket", capacity=10, leak_rate=None),
                 "leak_rate",
             ),
             (
-                LeakyBucketAlgorithm(),
+                AsyncLeakyBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_lb", algorithm="leaky_bucket", capacity=10, leak_rate=0),
                 "positive",
             ),
@@ -331,28 +331,28 @@ class TestSyncAlgorithms:
         ("algorithm", "module", "rule", "storage_method", "expected_kwargs"),
         [
             (
-                SlidingWindowAlgorithmSync(),
+                SlidingWindowAlgorithm(),
                 sliding_window_sync_module,
                 LimitRule(name="sw_sync", algorithm="sliding_window", limit=5, window=60),
                 "sliding_window",
                 {"key": "client:1", "limit": 5, "window": 60, "now": BASE_TIME},
             ),
             (
-                FixedWindowAlgorithmSync(),
+                FixedWindowAlgorithm(),
                 fixed_window_sync_module,
                 LimitRule(name="fw_sync", algorithm="fixed_window", limit=10, window=30),
                 "fixed_window",
                 {"key": "client:1", "limit": 10, "window": 30, "now": BASE_TIME},
             ),
             (
-                TokenBucketAlgorithmSync(),
+                TokenBucketAlgorithm(),
                 token_bucket_sync_module,
                 LimitRule(name="tb_sync", algorithm="token_bucket", capacity=7, refill_rate=2.5),
                 "token_bucket",
                 {"key": "client:1", "capacity": 7, "refill_rate": 2.5, "now": BASE_TIME},
             ),
             (
-                LeakyBucketAlgorithmSync(),
+                LeakyBucketAlgorithm(),
                 leaky_bucket_sync_module,
                 LimitRule(name="lb_sync", algorithm="leaky_bucket", capacity=3, leak_rate=0.75),
                 "leaky_bucket",
@@ -375,25 +375,25 @@ class TestSyncAlgorithms:
         ("algorithm", "module", "rule", "expected_limit"),
         [
             (
-                SlidingWindowAlgorithmSync(),
+                SlidingWindowAlgorithm(),
                 sliding_window_sync_module,
                 LimitRule(name="sw_denied_sync", algorithm="sliding_window", limit=2, window=60),
                 2,
             ),
             (
-                FixedWindowAlgorithmSync(),
+                FixedWindowAlgorithm(),
                 fixed_window_sync_module,
                 LimitRule(name="fw_denied_sync", algorithm="fixed_window", limit=2, window=60),
                 2,
             ),
             (
-                TokenBucketAlgorithmSync(),
+                TokenBucketAlgorithm(),
                 token_bucket_sync_module,
                 LimitRule(name="tb_denied_sync", algorithm="token_bucket", capacity=2, refill_rate=1),
                 2,
             ),
             (
-                LeakyBucketAlgorithmSync(),
+                LeakyBucketAlgorithm(),
                 leaky_bucket_sync_module,
                 LimitRule(name="lb_denied_sync", algorithm="leaky_bucket", capacity=2, leak_rate=1),
                 2,
@@ -413,7 +413,7 @@ class TestSyncAlgorithms:
         rule = LimitRule(name="tb_limit_sync", algorithm="token_bucket", limit=12, refill_rate=3)
         storage = SyncSpyStorage()
 
-        result = TokenBucketAlgorithmSync().check("client:tb", rule, storage)  # type: ignore[arg-type]
+        result = TokenBucketAlgorithm().check("client:tb", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("token_bucket", {"key": f"{rule.name}:client:tb", "capacity": 12, "refill_rate": 3, "now": BASE_TIME})
@@ -425,7 +425,7 @@ class TestSyncAlgorithms:
         rule = LimitRule(name="tb_window_sync", algorithm="token_bucket", capacity=20, window=4)
         storage = SyncSpyStorage()
 
-        TokenBucketAlgorithmSync().check("client:tb-window", rule, storage)  # type: ignore[arg-type]
+        TokenBucketAlgorithm().check("client:tb-window", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("token_bucket", {"key": f"{rule.name}:client:tb-window", "capacity": 20, "refill_rate": 5, "now": BASE_TIME})
@@ -443,7 +443,7 @@ class TestSyncAlgorithms:
         )
         storage = SyncSpyStorage()
 
-        result = TokenBucketAlgorithmSync().check("client:tb-precedence", rule, storage)  # type: ignore[arg-type]
+        result = TokenBucketAlgorithm().check("client:tb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("token_bucket", {"key": f"{rule.name}:client:tb-precedence", "capacity": 20, "refill_rate": 1.5, "now": BASE_TIME})
@@ -455,7 +455,7 @@ class TestSyncAlgorithms:
         rule = LimitRule(name="lb_window_sync", algorithm="leaky_bucket", capacity=20, window=4)
         storage = SyncSpyStorage()
 
-        LeakyBucketAlgorithmSync().check("client:lb-window", rule, storage)  # type: ignore[arg-type]
+        LeakyBucketAlgorithm().check("client:lb-window", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("leaky_bucket", {"key": f"{rule.name}:client:lb-window", "capacity": 20, "leak_rate": 5, "now": BASE_TIME})
@@ -473,7 +473,7 @@ class TestSyncAlgorithms:
         )
         storage = SyncSpyStorage()
 
-        result = LeakyBucketAlgorithmSync().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
+        result = LeakyBucketAlgorithm().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("leaky_bucket", {"key": f"{rule.name}:client:lb-precedence", "capacity": 20, "leak_rate": 1.5, "now": BASE_TIME})
@@ -485,7 +485,7 @@ class TestSyncAlgorithms:
         rule = LimitRule(name="lb_limit_sync", algorithm="leaky_bucket", limit=9, leak_rate=3)
         storage = SyncSpyStorage()
 
-        result = LeakyBucketAlgorithmSync().check("client:lb", rule, storage)  # type: ignore[arg-type]
+        result = LeakyBucketAlgorithm().check("client:lb", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("leaky_bucket", {"key": f"{rule.name}:client:lb", "capacity": 9, "leak_rate": 3, "now": BASE_TIME})
@@ -497,7 +497,7 @@ class TestSyncAlgorithms:
         rule = LimitRule(name="lb_precedence_sync", algorithm="leaky_bucket", limit=100, capacity=8, leak_rate=2)
         storage = SyncSpyStorage()
 
-        result = LeakyBucketAlgorithmSync().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
+        result = LeakyBucketAlgorithm().check("client:lb-precedence", rule, storage)  # type: ignore[arg-type]
 
         assert storage.calls == [
             ("leaky_bucket", {"key": f"{rule.name}:client:lb-precedence", "capacity": 8, "leak_rate": 2, "now": BASE_TIME})
@@ -508,52 +508,52 @@ class TestSyncAlgorithms:
         ("algorithm", "rule", "message"),
         [
             (
-                SlidingWindowAlgorithmSync(),
+                SlidingWindowAlgorithm(),
                 LimitRule.model_construct(name="bad_sw", algorithm="sliding_window", limit=None, window=60),
                 "limit",
             ),
             (
-                SlidingWindowAlgorithmSync(),
+                SlidingWindowAlgorithm(),
                 LimitRule.model_construct(name="bad_sw", algorithm="sliding_window", limit=10, window=None),
                 "window",
             ),
             (
-                FixedWindowAlgorithmSync(),
+                FixedWindowAlgorithm(),
                 LimitRule.model_construct(name="bad_fw", algorithm="fixed_window", limit=None, window=60),
                 "limit",
             ),
             (
-                FixedWindowAlgorithmSync(),
+                FixedWindowAlgorithm(),
                 LimitRule.model_construct(name="bad_fw", algorithm="fixed_window", limit=10, window=None),
                 "window",
             ),
             (
-                TokenBucketAlgorithmSync(),
+                TokenBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_tb", algorithm="token_bucket", capacity=None, limit=None, refill_rate=1),
                 "capacity",
             ),
             (
-                TokenBucketAlgorithmSync(),
+                TokenBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_tb", algorithm="token_bucket", capacity=10, refill_rate=None, window=None),
                 "refill_rate",
             ),
             (
-                TokenBucketAlgorithmSync(),
+                TokenBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_tb", algorithm="token_bucket", capacity=10, refill_rate=0),
                 "positive",
             ),
             (
-                LeakyBucketAlgorithmSync(),
+                LeakyBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_lb", algorithm="leaky_bucket", capacity=None, limit=None, leak_rate=1),
                 "capacity",
             ),
             (
-                LeakyBucketAlgorithmSync(),
+                LeakyBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_lb", algorithm="leaky_bucket", capacity=10, leak_rate=None),
                 "leak_rate",
             ),
             (
-                LeakyBucketAlgorithmSync(),
+                LeakyBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_lb", algorithm="leaky_bucket", capacity=10, leak_rate=0),
                 "positive",
             ),

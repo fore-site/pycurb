@@ -1,10 +1,10 @@
 import time
-from .base_sync import RateLimiterAlgorithmSync
+from .base_async import AsyncRateLimiterAlgorithm
 from ..models import LimitRule, RateLimitResult
-from ..storage.base_sync import StorageSync
+from ..storage import AsyncStorage
 
-class TokenBucketAlgorithmSync(RateLimiterAlgorithmSync):
-    def check(self, key: str, rule: LimitRule, storage: StorageSync) -> RateLimitResult:
+class AsyncTokenBucketAlgorithm(AsyncRateLimiterAlgorithm):
+    async def check(self, key: str, rule: LimitRule, storage: AsyncStorage) -> RateLimitResult:
         capacity = rule.capacity if rule.capacity is not None else rule.limit
         if capacity is None:
             raise ValueError("Token bucket algorithm requires 'capacity' or 'limit'.")
@@ -21,7 +21,7 @@ class TokenBucketAlgorithmSync(RateLimiterAlgorithmSync):
         
         now = time.time()
         storage_key = f"{rule.name}:{key}"
-        allowed, remaining, reset_at = storage.token_bucket(
+        allowed, remaining, reset_at = await storage.token_bucket(
             key=storage_key, capacity=capacity, refill_rate=refill_rate, now=now
         )
         return RateLimitResult(

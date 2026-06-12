@@ -5,7 +5,7 @@ class Storage(ABC):
     """Abstract storage backend for rate limiter counters."""
 
     @abstractmethod
-    async def sliding_window(
+    def sliding_window(
         self, key: str, window: int, limit: int, now: float
     ) -> Tuple[bool, int, float]:
         """
@@ -26,7 +26,7 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    async def fixed_window(
+    def fixed_window(
         self, key: str, window: int, limit: int, now: float
     ) -> Tuple[bool, int, float]:
         """
@@ -50,7 +50,7 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    async def token_bucket(
+    def token_bucket(
         self, key: str, capacity: int, refill_rate: float, now: float
     ) -> Tuple[bool, int, float]:
         """
@@ -71,7 +71,7 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    async def leaky_bucket(
+    def leaky_bucket(
         self, key: str, capacity: int, leak_rate: float, now: float
     ) -> Tuple[bool, int, float]:
         """
@@ -95,6 +95,6 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    async def close(self) -> None:
+    def close(self) -> None:
         """Release any resources (connections, etc.)."""
         pass

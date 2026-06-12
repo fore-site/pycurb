@@ -1,4 +1,4 @@
-from typing import Dict, List, Callable, Union
+from typing import Dict, List, Callable, Union, cast
 from .models import LimitRule, RateLimitResult
 from .storage import Storage
 from .resolver import RuleResolver
@@ -7,31 +7,29 @@ from .algorithms import (
     SlidingWindowAlgorithm,
     FixedWindowAlgorithm,
     TokenBucketAlgorithm,
-    LeakyBucketAlgorithm
+    LeakyBucketAlgorithm,
 )
 
 class RateLimiter:
-    """Async core rate limiter engine"""
+    """Core rate limiter engine."""
 
-    def __init__(
-            self, 
-            storage: Storage, 
-            rules_or_resolver: Union[List[LimitRule], Callable[[str], LimitRule]]
+    def __init__(self, 
+                 storage: Storage, 
+                 rules_or_resolver: Union[List[LimitRule], Callable[[str], LimitRule]]
         ):
         """
         Initialize the rate limiter
 
         Args:
             storage: A storage backend (e.g MemoryStorage, RedisStorage)
-            rules: A list of LimitRule objects. Each rule must have a unique name
+            rules_or_resolver: A list of LimitRule objects. Each rule must have a unique name
         """
         self.storage = storage
-        
+
         if isinstance(rules_or_resolver, list):
-            # static rule list
             self.rule_resolver = RuleResolver(rules_or_resolver)
         else:
-            self.rule_resolver = rules_or_resolver
+            self.rule_resolver = cast(RuleResolver, rules_or_resolver)
 
         self.algorithms: Dict[str, RateLimiterAlgorithm] = {
             "sliding_window": SlidingWindowAlgorithm(),
@@ -44,7 +42,7 @@ class RateLimiter:
     def from_resolver(cls, storage: Storage, resolver: Callable[[str], LimitRule]):
         return cls(storage, resolver)
 
-    async def check(self, key: str, rule_name: str) -> RateLimitResult:
+    def check(self, key: str, rule_name: str) -> RateLimitResult:
         """
         Check if a request with the given key is allowed under the named rule.
 
@@ -60,9 +58,8 @@ class RateLimiter:
         """
         rule = self.rule_resolver(rule_name)
         if rule is None:
-            raise ValueError(f"Rule '{rule_name}' not found.")
-        
-        algorithm = self.algorithms.get(rule.algorithm)
-        if algorithm is None:
+            raise ValueError(f"Rule '{rule_name}' not found")
+        algo = self.algorithms.get(rule.algorithm)
+        if algo is None:
             raise ValueError(f"Unsupported algorithm '{rule.algorithm}' for rule '{rule_name}'")
-        return await algorithm.check(key=key, rule=rule, storage=self.storage)
+        return algo.check(key, rule, self.storage)

@@ -1,7 +1,7 @@
 from .models import LimitRule, RateLimitResult, RateLimitHeaders
+from .limiter_async import AsyncRateLimiter
 from .limiter import RateLimiter
-from .limiter_sync import RateLimiterSync
-from .resolver import RuleResolver
+from .resolver import RuleResolver, AsyncRuleResolver
 from .decorators import rate_limit, RateLimitExceeded, arg_extractor
 
 
@@ -10,8 +10,9 @@ __all__ = [
     "RateLimitResult",
     "RateLimitHeaders",
     "RateLimiter",
-    "RateLimiterSync",
+    "AsyncRateLimiter",
     "RuleResolver",
+    "AsyncRuleResolver",
     "rate_limit",
     "RateLimitExceeded",
     "arg_extractor",

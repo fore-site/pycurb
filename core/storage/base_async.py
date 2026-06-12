@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-class StorageSync(ABC):
-    """Abstract storage backend for rate limiter counters. Synchronous version (WSGI compatible)"""
+class AsyncStorage(ABC):
+    """Abstract storage backend for rate limiter counters. Asynchronous version (WSGI compatible)"""
 
     @abstractmethod
-    def sliding_window(
+    async def sliding_window(
         self, key: str, window: int, limit: int, now: float
     ) -> Tuple[bool, int, float]:
         """
@@ -26,7 +26,7 @@ class StorageSync(ABC):
         pass
 
     @abstractmethod
-    def fixed_window(
+    async def fixed_window(
         self, key: str, window: int, limit: int, now: float
     ) -> Tuple[bool, int, float]:
         """
@@ -50,7 +50,7 @@ class StorageSync(ABC):
         pass
 
     @abstractmethod
-    def token_bucket(
+    async def token_bucket(
         self, key: str, capacity: int, refill_rate: float, now: float
     ) -> Tuple[bool, int, float]:
         """
@@ -71,7 +71,7 @@ class StorageSync(ABC):
         pass
 
     @abstractmethod
-    def leaky_bucket(
+    async def leaky_bucket(
         self, key: str, capacity: int, leak_rate: float, now: float
     ) -> Tuple[bool, int, float]:
         """
@@ -95,6 +95,6 @@ class StorageSync(ABC):
         pass
 
     @abstractmethod
-    def close(self) -> None:
+    async def close(self) -> None:
         """Release any resources (connections, etc.)."""
         pass

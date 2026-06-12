@@ -1,10 +1,14 @@
 import functools
+import inspect
 from typing import Callable, Optional, Union, Any, cast
-from .resolver import RuleResolver
+from .resolver import RuleResolver, AsyncRuleResolver
+from .limiter_async import AsyncRateLimiter
 from .limiter import RateLimiter
-from .limiter_sync import RateLimiterSync
 from .models import LimitRule, RateLimitResult
 from ..utils import parse_rate_limit_string
+
+def is_async_limiter(limiter):
+    return inspect.iscoroutinefunction(limiter.check)
 
 class RateLimitExceeded(Exception):
     def __init__(self, result: RateLimitResult):
@@ -30,7 +34,7 @@ def arg_extractor(*arg_names: str) -> Callable[..., str]:
     return extractor
 
 def rate_limit(
-    limiter: Union[RateLimiter, RateLimiterSync],
+    limiter: Union[RateLimiter, AsyncRateLimiter],
     *,
     rule_name: Optional[str] = None,
     limit_str: Optional[str] = None,
@@ -54,36 +58,47 @@ def rate_limit(
     if (rule_name is None) == (limit_str is None):
         raise ValueError("Provide exactly one of 'rule_name' or 'limit_str'")
     if key_extractor is None:
-        raise TypeError("key_extractor is required to extract the key for rate limiting")
+        raise TypeError("key_extractor must be provided")
 
     def decorator(func: Callable) -> Callable:
-        # Determine the effective rule name
+        func_is_async = inspect.iscoroutinefunction(func)
+        limiter_is_async = inspect.iscoroutinefunction(limiter.check)
+
+        # Validate consistency
+        if func_is_async and not limiter_is_async:
+            raise TypeError("Async function requires an async RateLimiter (use RateLimiter, not RateLimiterSync)")
+        if not func_is_async and limiter_is_async:
+            raise TypeError("Sync function requires a sync RateLimiter (use RateLimiterSync, not RateLimiter)")
+
+        # Determine rule name and whether lazy creation is needed
         if rule_name is not None:
             effective_rule_name = rule_name
+            need_rule_creation = False
         else:
-            # Create a new rule from shorthand
             effective_rule_name = f"{func.__module__}.{func.__qualname__}"
-            limit, window = parse_rate_limit_string(limit_str)  # type: ignore
-            rule = LimitRule(
-                name=effective_rule_name,
-                algorithm=algorithm,    # type: ignore[arg-type]
-                limit=limit,
-                window=window,
-            )
-            # Add to resolver (must be mutable)
-            resolver = limiter.rule_resolver
-            if isinstance(resolver, RuleResolver):
-                resolver.add_rule(rule)
-            else:
-                raise TypeError("The limiter's rule resolver must be an instance of RuleResolver to add new rules dynamically.")
+            need_rule_creation = True
+            _rule_created = False
 
-        # Wrap the function
-        if isinstance(limiter, RateLimiter):
-            # Async wrapper
+        if func_is_async and limiter_is_async:
+            limiter_async = cast(AsyncRateLimiter, limiter)
+
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
+                nonlocal _rule_created
+                if need_rule_creation and not _rule_created:
+                    # Parse shorthand inside the wrapper (only once)
+                    limit, window = parse_rate_limit_string(limit_str)  # type: ignore
+                    rule = LimitRule(
+                        name=effective_rule_name,
+                        algorithm=algorithm,    #type: ignore
+                        limit=limit,
+                        window=window,
+                    )
+                    resolver = limiter_async.rule_resolver
+                    await resolver.add_rule(rule)
+                    _rule_created = True
+
                 key = key_extractor(*args, **kwargs)
-                limiter_async = cast(RateLimiter, limiter)
                 result = await limiter_async.check(key, effective_rule_name)
                 if result.allowed:
                     return await func(*args, **kwargs)
@@ -91,12 +106,25 @@ def rate_limit(
                     raise RateLimitExceeded(result)
                 return None
             return async_wrapper
-        else:
-            # Sync wrapper
+        if not (func_is_async or limiter_is_async):
+            limiter_sync = cast(RateLimiter, limiter)
+            
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
+                nonlocal _rule_created
+                if need_rule_creation and not _rule_created:
+                    limit, window = parse_rate_limit_string(limit_str)  # type: ignore
+                    rule = LimitRule(
+                        name=effective_rule_name,
+                        algorithm=algorithm,    # type: ignore
+                        limit=limit,
+                        window=window,
+                    )
+                    resolver = limiter_sync.rule_resolver
+                    resolver.add_rule(rule)
+                    _rule_created = True
+
                 key = key_extractor(*args, **kwargs)
-                limiter_sync = cast(RateLimiterSync, limiter)
                 result = limiter_sync.check(key, effective_rule_name)
                 if result.allowed:
                     return func(*args, **kwargs)

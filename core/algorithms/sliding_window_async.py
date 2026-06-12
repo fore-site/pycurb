@@ -1,15 +1,16 @@
 import time
-from .base_sync import RateLimiterAlgorithmSync
+from .base_async import AsyncRateLimiterAlgorithm
 from ..models import LimitRule, RateLimitResult
-from  ..storage.base_sync import StorageSync
+from  ..storage import AsyncStorage
 
-class SlidingWindowAlgorithmSync(RateLimiterAlgorithmSync):
-    def check(self, key: str, rule: LimitRule, storage: StorageSync) -> RateLimitResult:
+class AsyncSlidingWindowAlgorithm(AsyncRateLimiterAlgorithm):
+    async def check(self, key: str, rule: LimitRule, storage: AsyncStorage) -> RateLimitResult:
         if rule.limit is None or rule.window is None:
             raise ValueError("Sliding window algorithm requires 'limit' and 'window'.")
+        
         now = time.time()
         storage_key = f"{rule.name}:{key}"
-        allowed, remaining, reset_at = storage.sliding_window(
+        allowed, remaining, reset_at = await storage.sliding_window(
             key=storage_key, window=rule.window, limit=rule.limit, now=now)
         return RateLimitResult(
             allowed=allowed,

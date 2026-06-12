@@ -1,5 +1,5 @@
 def main():
-    print("Hello from pycurb!")
+    print('Hello from Pycurb')
 
 
 if __name__ == "__main__":

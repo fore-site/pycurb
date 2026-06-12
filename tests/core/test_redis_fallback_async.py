@@ -1,6 +1,6 @@
 import pytest
 import redis.exceptions
-from ...core.storage import MemoryStorage, RedisStorage
+from ...core.storage import AsyncMemoryStorage, AsyncRedisStorage
 
 # Helper: Failing Redis Client (async)
 class FailingRedisClient:
@@ -11,7 +11,7 @@ class FailingRedisClient:
 
 # Spy Storage to record calls
 
-class SpyStorage(MemoryStorage):
+class SpyStorage(AsyncMemoryStorage):
     def __init__(self):
         super().__init__()
         self.calls = []
@@ -37,7 +37,7 @@ class SpyStorage(MemoryStorage):
 async def test_sliding_window_fallback_to_memory():
     spy = SpyStorage()
     failing_client = FailingRedisClient()
-    storage = RedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
+    storage = AsyncRedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
 
     result = await storage.sliding_window("test_key", 60, 100, 12345.0)
 
@@ -52,7 +52,7 @@ async def test_sliding_window_fallback_to_memory():
 async def test_fixed_window_fallback_to_memory():
     spy = SpyStorage()
     failing_client = FailingRedisClient()
-    storage = RedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
+    storage = AsyncRedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
 
     result = await storage.fixed_window("test_key", 60, 100, 12345.0)
 
@@ -66,7 +66,7 @@ async def test_fixed_window_fallback_to_memory():
 async def test_token_bucket_fallback_to_memory():
     spy = SpyStorage()
     failing_client = FailingRedisClient()
-    storage = RedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
+    storage = AsyncRedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
 
     result = await storage.token_bucket("test_key", 10, 2.0, 12345.0)
 
@@ -82,7 +82,7 @@ async def test_token_bucket_fallback_to_memory():
 async def test_leaky_bucket_fallback_to_memory():
     spy = SpyStorage()
     failing_client = FailingRedisClient()
-    storage = RedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
+    storage = AsyncRedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
 
     result = await storage.leaky_bucket("test_key", 5, 1.0, 12345.0)
 
@@ -97,7 +97,7 @@ async def test_leaky_bucket_fallback_to_memory():
 @pytest.mark.asyncio
 async def test_fail_open_true_allows_request():
     failing_client = FailingRedisClient()
-    storage = RedisStorage(failing_client, fallback_storage=None, fail_open=True, use_redis_time=False) # type: ignore[arg-type]
+    storage = AsyncRedisStorage(failing_client, fallback_storage=None, fail_open=True, use_redis_time=False) # type: ignore[arg-type]
 
     allowed, remaining, reset_at = await storage.sliding_window("key", 60, 100, 12345.0)
 
@@ -108,7 +108,7 @@ async def test_fail_open_true_allows_request():
 @pytest.mark.asyncio
 async def test_fail_open_false_denies_request():
     failing_client = FailingRedisClient()
-    storage = RedisStorage(failing_client, fallback_storage=None, fail_open=False, use_redis_time=False)    # type: ignore[arg-type]
+    storage = AsyncRedisStorage(failing_client, fallback_storage=None, fail_open=False, use_redis_time=False)    # type: ignore[arg-type]
 
     allowed, remaining, reset_at = await storage.sliding_window("key", 60, 100, 12345.0)
 
@@ -128,7 +128,7 @@ async def test_fail_open_false_denies_request():
 async def test_all_methods_trigger_fallback(method_name, args):
     spy = SpyStorage()
     failing_client = FailingRedisClient()
-    storage = RedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
+    storage = AsyncRedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
 
     method = getattr(storage, method_name)
     result = await method(*args)

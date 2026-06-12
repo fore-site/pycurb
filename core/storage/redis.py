@@ -3,11 +3,9 @@ import math
 import binascii
 import os
 from typing import Tuple, Optional
-import logging
-import asyncio
-import inspect
-import redis.asyncio as aioredis
+import redis
 import redis.exceptions as redis_exceptions
+import logging
 from .base import Storage
 
 logger = logging.getLogger(__name__)
@@ -15,9 +13,9 @@ logger = logging.getLogger(__name__)
 def with_fallback(func):
     """Decorator to handle Redis exceptions and fallback to another storage or fail-open/closed."""
     @functools.wraps(func)
-    async def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args, **kwargs):
         try:
-            return await func(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
         except (
             redis_exceptions.ConnectionError,
             redis_exceptions.TimeoutError,
@@ -27,9 +25,9 @@ def with_fallback(func):
             logger.warning(f"Redis operation {func.__name__} failed: {e}")
             if self.fallback_storage is not None:
                 logger.warning(f"Redis error: {e}. Falling back to {self.fallback_storage.__class__.__name__}.")
-                # Call the same method on fallback storage (async)
+                # Call the same method on fallback storage (sync)
                 fallback_method = getattr(self.fallback_storage, func.__name__)
-                return await fallback_method(*args, **kwargs)
+                return fallback_method(*args, **kwargs)
 
             # Determine 'now' from args/kwargs if present (last positional arg is expected to be `now`)
             now = kwargs.get('now') if 'now' in kwargs else (args[-1] if args else None)
@@ -40,6 +38,7 @@ def with_fallback(func):
                     reset_at = float(now) + 3600 if now is not None else float('inf')
                 except Exception:
                     reset_at = float('inf')
+                # Provide a large remaining default so callers can proceed conservatively
                 return True, 9999, reset_at
             else:
                 logger.warning(f"Redis error: {e}. Fail-closed enabled, denying request.")
@@ -48,10 +47,10 @@ def with_fallback(func):
     return wrapper
 
 class RedisStorage(Storage):
-    """Asynchronous redis storage for rate limiting."""
-
+    """Redis storage for rate limiting."""
+    
     def __init__(self, 
-                 redis_client: aioredis.Redis, 
+                 redis_client: redis.Redis, 
                  key_prefix: str = "ratelimit:",
                  use_redis_time: bool = False,
                  fallback_storage: Optional[Storage] = None,
@@ -64,7 +63,7 @@ class RedisStorage(Storage):
         self.fail_open = fail_open
 
     @with_fallback
-    async def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
+    def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
         # Lua script for sliding window using sorted.
         lua_script = """
         local key = KEYS[1]
@@ -98,14 +97,12 @@ class RedisStorage(Storage):
         """
         unique_id = binascii.hexlify(os.urandom(8)).decode()
         script = self.redis.register_script(lua_script)
-        if asyncio.iscoroutine(script) or inspect.isawaitable(script):
-            script = await script
         full_key = self.prefix + "sliding:" + key
 
         if self.use_redis_time:
-            result = await script(keys=[full_key], args=["server", window, limit, unique_id])
+            result = script(keys=[full_key], args=["server", window, limit, unique_id])
         else:
-            result = await script(keys=[full_key], args=[now, window, limit, unique_id])
+            result = script(keys=[full_key], args=[now, window, limit, unique_id])
         
         allowed = bool(result[0])
         remaining = int(result[1])
@@ -114,19 +111,19 @@ class RedisStorage(Storage):
         return allowed, remaining, reset_at
 
     @with_fallback
-    async def fixed_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
+    def fixed_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
         if self.use_redis_time:
-            time_parts = await self.redis.time()
-            now = time_parts[0] + time_parts[1] / 1_000_000
-
+            time_parts = self.redis.time()
+            now = time_parts[0] + time_parts[1] / 1_000_000 
+        
         window_start = math.floor(now / window) * window
         window_key = f"{self.prefix}fixed:{key}:{window_start}"
 
         # Atomic increment
-        count = await self.redis.incr(window_key)
+        count = self.redis.incr(window_key)
         # Set expiry
         if count == 1:
-            await self.redis.expire(window_key, window)
+            self.redis.expire(window_key, window)
         if count > limit:
             reset_at = window_start + window
             return False, 0, reset_at
@@ -136,7 +133,7 @@ class RedisStorage(Storage):
             return True, remaining, reset_at
         
     @with_fallback
-    async def token_bucket(self, key: str, capacity: int, refill_rate: float, now: float) -> Tuple[bool, int, float]:
+    def token_bucket(self, key: str, capacity: int, refill_rate: float, now: float) -> Tuple[bool, int, float]:
         # Lua script for token bucket
         lua_script = """
         local key = KEYS[1]
@@ -186,14 +183,12 @@ class RedisStorage(Storage):
         end
         """
         script = self.redis.register_script(lua_script)
-        if asyncio.iscoroutine(script) or inspect.isawaitable(script):
-            script = await script
         full_key = self.prefix + "token:" + key
 
         if self.use_redis_time:
-            result = await script(keys=[full_key], args=["server", capacity, refill_rate])
+            result = script(keys=[full_key], args=["server", capacity, refill_rate])
         else:
-            result = await script(keys=[full_key], args=[now, capacity, refill_rate])
+            result = script(keys=[full_key], args=[now, capacity, refill_rate])
         allowed = bool(result[0])
         remaining = int(result[1])
         reset_at = float(result[2])
@@ -201,7 +196,7 @@ class RedisStorage(Storage):
         return allowed, remaining, reset_at
 
     @with_fallback
-    async def leaky_bucket(self, key: str, capacity: int, leak_rate: float, now: float) -> Tuple[bool, int, float]:
+    def leaky_bucket(self, key: str, capacity: int, leak_rate: float, now: float) -> Tuple[bool, int, float]:
         # Lua script for leaky bucket (counter variant)
         lua_script = """
         local key = KEYS[1]
@@ -241,7 +236,7 @@ class RedisStorage(Storage):
         if leaked > 0 then
             last_leak = last_leak + (leaked / rate)
         end
-        
+
         if new_queue < capacity then
             new_queue = new_queue + 1
             redis.call('SET', key, new_queue .. ':' .. last_leak)
@@ -255,20 +250,18 @@ class RedisStorage(Storage):
         end
         """
         script = self.redis.register_script(lua_script)
-        if asyncio.iscoroutine(script) or inspect.isawaitable(script):
-            script = await script
         full_key = self.prefix + 'leaky:' + key
 
         if self.use_redis_time:
-            result = await script(keys=[full_key], args=["server", capacity, leak_rate])
+            result = script(keys=[full_key], args=["server", capacity, leak_rate])
         else:
-            result = await script(keys=[full_key], args=[now, capacity, leak_rate])
-    
+            result = script(keys=[full_key], args=[now, capacity, leak_rate])
+        
         allowed = bool(result[0])
         remaining = int(result[1])
         reset_at = float(result[2])
 
         return allowed, remaining, reset_at
     
-    async def close(self) -> None:
-        await self.redis.aclose() 
+    def close(self) -> None:
+        self.redis.close()

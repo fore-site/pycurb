@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from ..models import LimitRule, RateLimitResult
-from ..storage.base import Storage
+from ..storage import Storage
 
 class RateLimiterAlgorithm(ABC):
     """Abstract base for all rate limiting algorithms."""
 
     @abstractmethod
-    async def check(self, key: str, rule: LimitRule, storage: Storage) -> RateLimitResult:
+    def check(self, key: str, rule: LimitRule, storage: Storage) -> RateLimitResult:
         """
         Evaluate rate limit for a given key and rule.
         Args:
