@@ -628,7 +628,6 @@ class TestLeakyBucket:
         assert remaining == 0
 
 
-
 class TestRedisStorageServerTimeAsync:
     @pytest.mark.asyncio
     async def test_sliding_window_with_server_time(self, async_redis_storage_with_server_time):
@@ -720,3 +719,140 @@ class TestRedisStorageServerTimeSync:
         assert allowed is True
         allowed, _, _ = storage.fixed_window(key, window, limit, now=0)
         assert allowed is False
+
+
+class TestGcra:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("storage_fixture", ASYNC_STORAGE_FIXTURES, indirect=True)
+    async def test_initial_full(self, storage_fixture):
+        storage = storage_fixture
+        key = "gcra1"
+        capacity = 10
+        rate = 1.0
+        now = BASE_TIME
+        allowed, remaining, reset_at = await storage.gcra(key, capacity, rate, now)
+        assert allowed is True
+        assert remaining == capacity - 1
+        expected_reset = now + (capacity - remaining) / rate
+        assert abs(reset_at - expected_reset) < 0.1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("storage_fixture", ASYNC_STORAGE_FIXTURES, indirect=True)
+    async def test_exhaust_and_refill(self, storage_fixture):
+        storage = storage_fixture
+        key = "gcra_exhaust"
+        capacity = 2
+        rate = 1.0
+        now = BASE_TIME
+        for i in range(capacity):
+            allowed, _, _ = await storage.gcra(key, capacity, rate, now + i*0.1)
+            assert allowed is True
+        allowed, _, _ = await storage.gcra(key, capacity, rate, now + 0.3)
+        assert allowed is False
+        new_now = now + 1.1
+        allowed, remaining, _ = await storage.gcra(key, capacity, rate, new_now)
+        assert allowed is True
+        assert remaining == 0
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("storage_fixture", ASYNC_STORAGE_FIXTURES, indirect=True)
+    async def test_partial_refill_denies_until_one_available(self, storage_fixture):
+        storage = storage_fixture
+        key = "gcra_partial"
+        capacity = 1
+        rate = 1.0
+        now = BASE_TIME
+
+        assert (await storage.gcra(key, capacity, rate, now))[0] is True
+
+        allowed, remaining, reset_at = await storage.gcra(key, capacity, rate, now + 0.999)
+        assert allowed is False
+        assert remaining == 0
+        assert reset_at == pytest.approx(now + 1.0)
+
+        allowed, remaining, reset_at = await storage.gcra(key, capacity, rate, now + 1.0)
+        assert allowed is True
+        assert remaining == 0
+        assert reset_at == pytest.approx(now + 2.0)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("storage_fixture", ASYNC_STORAGE_FIXTURES, indirect=True)
+    async def test_refill_caps_at_capacity_after_idle(self, storage_fixture):
+        storage = storage_fixture
+        key = "gcra_cap"
+        capacity = 3
+        rate = 1.0
+        now = BASE_TIME
+
+        assert (await storage.gcra(key, capacity, rate, now))[1] == capacity - 1
+
+        idle_now = now + 100
+        allowed, remaining, reset_at = await storage.gcra(key, capacity, rate, idle_now)
+        assert allowed is True
+        assert remaining == capacity - 1
+        assert reset_at == pytest.approx(idle_now + 1)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("storage_fixture", ASYNC_STORAGE_FIXTURES, indirect=True)
+    async def test_keys_are_isolated(self, storage_fixture):
+        storage = storage_fixture
+        capacity = 1
+        rate = 0.5
+        now = BASE_TIME
+
+        assert (await storage.gcra("gcra_a", capacity, rate, now))[0] is True
+        assert (await storage.gcra("gcra_a", capacity, rate, now + 0.1))[0] is False
+
+        allowed, remaining, _ = await storage.gcra("gcra_b", capacity, rate, now + 0.1)
+        assert allowed is True
+        assert remaining == 0
+
+    @pytest.mark.parametrize("storage_fixture", SYNC_STORAGE_FIXTURES, indirect=True)
+    def test_partial_refill_denies_until_one_available_sync(self, storage_fixture):
+        storage = storage_fixture
+        key = "gcra_partial_sync"
+        capacity = 1
+        rate = 1.0
+        now = BASE_TIME
+
+        assert storage.gcra(key, capacity, rate, now)[0] is True
+
+        allowed, remaining, reset_at = storage.gcra(key, capacity, rate, now + 0.999)
+        assert allowed is False
+        assert remaining == 0
+        assert reset_at == pytest.approx(now + 1.0)
+
+        allowed, remaining, reset_at = storage.gcra(key, capacity, rate, now + 1.0)
+        assert allowed is True
+        assert remaining == 0
+        assert reset_at == pytest.approx(now + 2.0)
+
+    @pytest.mark.parametrize("storage_fixture", SYNC_STORAGE_FIXTURES, indirect=True)
+    def test_refill_caps_at_capacity_after_idle_sync(self, storage_fixture):
+        storage = storage_fixture
+        key = "gcra_cap_sync"
+        capacity = 3
+        rate = 1.0
+        now = BASE_TIME
+
+        assert storage.gcra(key, capacity, rate, now)[1] == capacity - 1
+
+        idle_now = now + 100
+        allowed, remaining, reset_at = storage.gcra(key, capacity, rate, idle_now)
+        assert allowed is True
+        assert remaining == capacity - 1
+        assert reset_at == pytest.approx(idle_now + 1)
+
+    @pytest.mark.parametrize("storage_fixture", SYNC_STORAGE_FIXTURES, indirect=True)
+    def test_keys_are_isolated_sync(self, storage_fixture):
+        storage = storage_fixture
+        capacity = 1
+        rate = 0.5
+        now = BASE_TIME
+
+        assert storage.gcra("gcra_sync_a", capacity, rate, now)[0] is True
+        assert storage.gcra("gcra_sync_a", capacity, rate, now + 0.1)[0] is False
+
+        allowed, remaining, _ = storage.gcra("gcra_sync_b", capacity, rate, now + 0.1)
+        assert allowed is True
+        assert remaining == 0

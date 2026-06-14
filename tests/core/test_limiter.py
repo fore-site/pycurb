@@ -28,6 +28,9 @@ class AsyncSpyStorage:
         self.calls.append(("leaky_bucket", kwargs))
         return self.response
 
+    async def gcra(self, **kwargs):
+        self.calls.append(("gcra", kwargs))
+        return self.response
 
 class SyncSpyStorage:
     def __init__(self, response=(True, 4, RESET_AT)):
@@ -48,6 +51,10 @@ class SyncSpyStorage:
 
     def leaky_bucket(self, **kwargs):
         self.calls.append(("leaky_bucket", kwargs))
+        return self.response
+    
+    def gcra(self, **kwargs):
+        self.calls.append(("gcra", kwargs))
         return self.response
 
 

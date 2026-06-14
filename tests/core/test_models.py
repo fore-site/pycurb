@@ -148,6 +148,40 @@ class TestLimitRule:
         with pytest.raises(ValidationError):
             rule.limit = 20  # frozen=True prevents mutation
 
+    def test_valid_gcra_with_capacity_refill(self):
+        rule = LimitRule(
+            name="gcra1",
+            algorithm="gcra",
+            capacity=100,
+            refill_rate=5.0
+        )
+        assert rule.capacity == 100
+        assert rule.refill_rate == 5.0
+
+    def test_valid_gcra_with_limit_refill(self):
+        rule = LimitRule(
+            name="gcra2",
+            algorithm="gcra",
+            limit=200,
+            refill_rate=10.0
+        )
+        assert rule.limit == 200
+        assert rule.refill_rate == 10.0
+
+    def test_gcra_missing_capacity_and_limit(self):
+        with pytest.raises(ValidationError) as exc:
+            LimitRule(name="bad", algorithm="gcra", refill_rate=5)
+        assert "'capacity' or 'limit'" in str(exc.value).lower()
+
+    def test_gcra_missing_refill_rate(self):
+        with pytest.raises(ValidationError) as exc:
+            LimitRule(name="bad", algorithm="gcra", capacity=100)
+        assert "refill_rate" in str(exc.value).lower()
+
+    def test_gcra_invalid_refill_rate_zero(self):
+        with pytest.raises(ValidationError):
+            LimitRule(name="bad", algorithm="gcra", capacity=100, refill_rate=0)
+
 
 class TestRateLimitResult:
     def test_valid_allowed(self):

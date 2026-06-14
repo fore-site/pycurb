@@ -9,6 +9,8 @@ from ...core.algorithms import (
     AsyncSlidingWindowAlgorithm,
     TokenBucketAlgorithm,
     AsyncTokenBucketAlgorithm,
+    GcraAlgorithm,
+    AsyncGcraAlgorithm,
 )
 from ...core.algorithms import fixed_window_async as fixed_window_module
 from ...core.algorithms import fixed_window as fixed_window_sync_module
@@ -18,6 +20,8 @@ from ...core.algorithms import sliding_window_async as sliding_window_module
 from ...core.algorithms import sliding_window as sliding_window_sync_module
 from ...core.algorithms import token_bucket_async as token_bucket_module
 from ...core.algorithms import token_bucket as token_bucket_sync_module
+from ...core.algorithms import gcra_async as gcra_module
+from ...core.algorithms import gcra as gcra_sync_module
 from ...core.models import LimitRule, RateLimitResult
 
 
@@ -45,6 +49,9 @@ class AsyncSpyStorage:
     async def leaky_bucket(self, **kwargs):
         self.calls.append(("leaky_bucket", kwargs))
         return self.response
+    async def gcra(self, **kwargs):
+        self.calls.append(("gcra", kwargs))
+        return self.response
 
 
 class SyncSpyStorage:
@@ -66,6 +73,9 @@ class SyncSpyStorage:
 
     def leaky_bucket(self, **kwargs):
         self.calls.append(("leaky_bucket", kwargs))
+        return self.response
+    def gcra(self, **kwargs):
+        self.calls.append(("gcra", kwargs))
         return self.response
 
 
@@ -123,6 +133,13 @@ class TestAsyncAlgorithms:
                 LimitRule(name="lb", algorithm="leaky_bucket", capacity=3, leak_rate=0.75),
                 "leaky_bucket",
                 {"key": "client:1", "capacity": 3, "leak_rate": 0.75, "now": BASE_TIME},
+            ),
+            (
+                AsyncGcraAlgorithm(),
+                gcra_module,
+                LimitRule(name="gcra", algorithm="gcra", capacity=7, refill_rate=2.5),
+                "gcra",
+                {"key": "client:1", "capacity": 7, "rate": 2.5, "now": BASE_TIME},
             ),
         ],
     )
@@ -187,6 +204,19 @@ class TestAsyncAlgorithms:
             ("token_bucket", {"key": f"{rule.name}:client:tb", "capacity": 12, "refill_rate": 3, "now": BASE_TIME})
         ]
         assert_result(result, limit=12, rule_name="tb_limit")
+
+    @pytest.mark.asyncio
+    async def test_gcra_uses_limit_as_capacity_fallback(self, monkeypatch):
+        freeze_time(monkeypatch, gcra_module)
+        rule = LimitRule(name="gcra_limit", algorithm="gcra", limit=12, refill_rate=3)
+        storage = AsyncSpyStorage()
+
+        result = await AsyncGcraAlgorithm().check("client:gcra", rule, storage)  # type: ignore[arg-type]
+
+        assert storage.calls == [
+            ("gcra", {"key": f"{rule.name}:client:gcra", "capacity": 12, "rate": 3, "now": BASE_TIME})
+        ]
+        assert_result(result, limit=12, rule_name="gcra_limit")
 
     @pytest.mark.asyncio
     async def test_token_bucket_derives_refill_rate_from_capacity_and_window(self, monkeypatch):
@@ -319,6 +349,21 @@ class TestAsyncAlgorithms:
                 LimitRule.model_construct(name="bad_lb", algorithm="leaky_bucket", capacity=10, leak_rate=0),
                 "positive",
             ),
+            (
+                AsyncGcraAlgorithm(),
+                LimitRule.model_construct(name="bad_gcra", algorithm="gcra", capacity=None, limit=None, refill_rate=1),
+                "capacity",
+            ),
+            (
+                AsyncGcraAlgorithm(),
+                LimitRule.model_construct(name="bad_gcra", algorithm="gcra", capacity=10, refill_rate=None),
+                "refill_rate",
+            ),
+            (
+                AsyncGcraAlgorithm(),
+                LimitRule.model_construct(name="bad_gcra", algorithm="gcra", capacity=10, refill_rate=0),
+                "positive",
+            ),
         ],
     )
     async def test_invalid_rule_shapes_raise_clear_value_error(self, algorithm, rule, message):
@@ -357,6 +402,13 @@ class TestSyncAlgorithms:
                 LimitRule(name="lb_sync", algorithm="leaky_bucket", capacity=3, leak_rate=0.75),
                 "leaky_bucket",
                 {"key": "client:1", "capacity": 3, "leak_rate": 0.75, "now": BASE_TIME},
+            ),
+            (
+                GcraAlgorithm(),
+                gcra_sync_module,
+                LimitRule(name="gcra_sync", algorithm="gcra", capacity=7, refill_rate=2.5),
+                "gcra",
+                {"key": "client:1", "capacity": 7, "rate": 2.5, "now": BASE_TIME},
             ),
         ],
     )
@@ -419,6 +471,18 @@ class TestSyncAlgorithms:
             ("token_bucket", {"key": f"{rule.name}:client:tb", "capacity": 12, "refill_rate": 3, "now": BASE_TIME})
         ]
         assert_result(result, limit=12, rule_name="tb_limit_sync")
+
+    def test_gcra_uses_limit_as_capacity_fallback_sync(self, monkeypatch):
+        freeze_time(monkeypatch, gcra_sync_module)
+        rule = LimitRule(name="gcra_limit_sync", algorithm="gcra", limit=12, refill_rate=3)
+        storage = SyncSpyStorage()
+
+        result = GcraAlgorithm().check("client:gcra", rule, storage)  # type: ignore[arg-type]
+
+        assert storage.calls == [
+            ("gcra", {"key": f"{rule.name}:client:gcra", "capacity": 12, "rate": 3, "now": BASE_TIME})
+        ]
+        assert_result(result, limit=12, rule_name="gcra_limit_sync")
 
     def test_token_bucket_derives_refill_rate_from_capacity_and_window(self, monkeypatch):
         freeze_time(monkeypatch, token_bucket_sync_module)
@@ -555,6 +619,21 @@ class TestSyncAlgorithms:
             (
                 LeakyBucketAlgorithm(),
                 LimitRule.model_construct(name="bad_lb", algorithm="leaky_bucket", capacity=10, leak_rate=0),
+                "positive",
+            ),
+            (
+                GcraAlgorithm(),
+                LimitRule.model_construct(name="bad_gcra", algorithm="gcra", capacity=None, limit=None, refill_rate=1),
+                "capacity",
+            ),
+            (
+                GcraAlgorithm(),
+                LimitRule.model_construct(name="bad_gcra", algorithm="gcra", capacity=10, refill_rate=None),
+                "refill_rate",
+            ),
+            (
+                GcraAlgorithm(),
+                LimitRule.model_construct(name="bad_gcra", algorithm="gcra", capacity=10, refill_rate=0),
                 "positive",
             ),
         ],

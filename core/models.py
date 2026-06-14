@@ -17,7 +17,7 @@ class LimitRule(BaseModel):
     limit: Optional[int] = Field(default=None, gt=0, description="Maximum requests allowed (window-based) or capacity (token bucket/gcra).")
     window: Optional[int] = Field(default=None, gt=0, description="Time window in seconds (for window-based algorithms) or base to calculate refill rate.")
     
-    # Optional parameters for token bucket and leaky bucket algorithms
+    # Optional parameters for token bucket, leaky bucket and Gcra algorithms
     capacity: Optional[int] = Field(default=None, gt=0, description="Maximum capacity for token bucket or gcra (burst limit).")
 
     refill_rate: Optional[float] = Field(default=None, gt=0, description="Tokens added per second or requests allowed per second for GCRA.")

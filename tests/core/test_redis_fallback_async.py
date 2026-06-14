@@ -1,6 +1,7 @@
 import pytest
 import redis.exceptions
 from ...core.storage import AsyncMemoryStorage, AsyncRedisStorage
+from typing import Tuple
 
 # Helper: Failing Redis Client (async)
 class FailingRedisClient:
@@ -31,6 +32,10 @@ class SpyStorage(AsyncMemoryStorage):
     async def leaky_bucket(self, key, capacity, leak_rate, now):
         self.calls.append(("leaky_bucket", (key, capacity, leak_rate, now)))
         return await super().leaky_bucket(key, capacity, leak_rate, now)
+
+    async def gcra(self, key: str, capacity: int, rate: float, now: float) -> Tuple[bool, int, float]:
+        self.calls.append(("gcra", (key, capacity, rate, now)))
+        return await super().gcra(key, capacity, rate, now)
 
 # Tests
 @pytest.mark.asyncio
@@ -92,6 +97,23 @@ async def test_leaky_bucket_fallback_to_memory():
     assert args == ("test_key", 5, 1.0, 12345.0)
     assert result[0] is True
 
+@pytest.mark.asyncio
+async def test_gcra_fallback_to_memory():
+    spy = SpyStorage()
+    failing_client = FailingRedisClient()
+    storage = AsyncRedisStorage(failing_client, fallback_storage=spy, fail_open=False, use_redis_time=False) # type: ignore[arg-type]
+
+    result = await storage.gcra("test_key", 10, 2.0, 12345.0)
+
+    assert len(spy.calls) == 1
+    method_name, args = spy.calls[0]
+    assert method_name == "gcra"
+    assert args == ("test_key", 10, 2.0, 12345.0)
+    
+    assert result[0] is True
+    assert result[1] == 9  # capacity=10, remaining after consuming = 9
+
+
 # Tests without fallback storage: fail_open / fail_closed
 
 @pytest.mark.asyncio
@@ -124,6 +146,7 @@ async def test_fail_open_false_denies_request():
     ("fixed_window", ("key", 60, 100, 12345.0)),
     ("token_bucket", ("key", 10, 2.0, 12345.0)),
     ("leaky_bucket", ("key", 5, 1.0, 12345.0)),
+    ("gcra", ("key", 10, 2.0, 12345.0))
 ])
 async def test_all_methods_trigger_fallback(method_name, args):
     spy = SpyStorage()

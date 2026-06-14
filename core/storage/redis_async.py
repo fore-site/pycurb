@@ -270,11 +270,12 @@ class AsyncRedisStorage(AsyncStorage):
 
         return allowed, remaining, reset_at
     
+    @with_fallback
     async def gcra(self, key: str, capacity: int, rate: float, now: float) -> Tuple[bool, int, float]:
         lua_script = """
         local key = KEYS[1]
         local now = ARGV[1]
-        
+
         if now == 'server' then
             local time_parts = redis.call('TIME');
             now = tonumber(time_parts[1]) + tonumber(time_parts[2]) / 1000000
@@ -286,36 +287,44 @@ class AsyncRedisStorage(AsyncStorage):
         local capacity = tonumber(ARGV[3])
 
         local interval = 1.0 / rate
-        local burst_interval = capacity * interval
+        -- Using (capacity - 1) ensures total burst size matches the capacity parameter
+        local burst_interval = (capacity - 1) * interval
 
         local tat_str = redis.call('GET', key)
         local tat
-        
+
         if tat_str then
             tat = tonumber(tat_str)
         else
             tat = now
         end
-        
-        local allowed = (tat < now + burst_interval)
+
+        -- Allowed if the current request timeline doesn't exceed burst threshold
+        local allowed = (tat <= now + burst_interval)
         local new_tat
         local remaining
         local reset_at
 
         if allowed then
             new_tat = math.max(tat, now) + interval
-            local ttl_ms = math.max(1, math.ceil((new_tat - now + interval) * 1000))
+            
             redis.call('SET', key, new_tat)
+            
+            -- Fix: Use integers for PEXPIRE and drop the extra (+ interval)
+            local ttl_ms = math.max(1, math.ceil((new_tat - now) * 1000))
             redis.call('PEXPIRE', key, ttl_ms)
+            
             local used_intervals = (new_tat - now) * rate
             remaining = math.max(0, math.floor(capacity - used_intervals))
             reset_at = new_tat
         else
             remaining = 0
+            -- Fix: The retry time when the client is allowed to request again
             reset_at = tat - burst_interval
         end
 
-        return {allowed and 1 or 0, remaining, reset_at}
+        -- Return reset_at formatted like other scripts to preserve fractional precision
+        return {allowed and 1 or 0, remaining, string.format('%.17g', reset_at)}
         """
 
         script = self.redis.register_script(lua_script)

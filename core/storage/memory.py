@@ -115,10 +115,11 @@ class MemoryStorage(Storage):
             tat = self._gcra.get(key, now)  # default first request
 
             interval = 1.0 / rate
-            burst_interval = capacity * interval
+            # Use (capacity - 1) so 'capacity' exactly equals max burst size
+            burst_interval = (capacity - 1) * interval 
 
             # Allowed if TAT is within allowed burst window
-            allowed = tat < now + burst_interval
+            allowed = tat <= now + burst_interval
 
             if allowed:
                 new_tat = max(tat, now) + interval
@@ -128,13 +129,12 @@ class MemoryStorage(Storage):
                 used_intervals = (new_tat - now) * rate
                 remaining = max(0, int(math.floor(capacity - used_intervals)))
 
-                # next theoretical arrival time (when next request would be scheduled)
+                # The bucket is completely empty/reset when new_tat is reached
                 reset_at = new_tat
             else:
                 remaining = 0
-
-                # earliest timestamp when a new request would be accepted:
-                # solve for t' where tat <= t' + burst_interval -> t' = tat - burst_interval
+                # True retry time: when tat falls back down into the allowed burst window
+                # tat <= t' + burst_interval  ->  t' = tat - burst_interval
                 reset_at = tat - burst_interval
 
             return (allowed, remaining, reset_at)

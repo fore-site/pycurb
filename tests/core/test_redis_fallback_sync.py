@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import pytest
 import redis.exceptions
 from ...core.storage import MemoryStorage, RedisStorage
@@ -30,6 +32,10 @@ class SpyStorage(MemoryStorage):
     def leaky_bucket(self, key, capacity, leak_rate, now):
         self.calls.append(("leaky_bucket", (key, capacity, leak_rate, now)))
         return super().leaky_bucket(key, capacity, leak_rate, now)
+    
+    def gcra(self, key: str, capacity: int, rate: float, now: float) -> Tuple[bool, int, float]:
+        self.calls.append(("gcra", (key, capacity, rate, now)))
+        return super().gcra(key, capacity, rate, now)
 
 # Tests
 
@@ -86,6 +92,21 @@ def test_leaky_bucket_fallback_to_memory_sync():
     assert args == ("test_key", 5, 1.0, 12345.0)
     assert result[0] is True
 
+def test_gcra_fallback_to_memory_sync():
+    spy = SpyStorage()
+    failing_client = FailingRedisClient()
+    storage = RedisStorage(failing_client, fallback_storage=spy, fail_open=False)   # type: ignore
+
+    result = storage.gcra("test_key", 10, 2.0, 12345.0)
+    assert len(spy.calls) == 1
+
+    method_name, args = spy.calls[0]
+    assert method_name == "gcra"
+    assert args == ("test_key", 10, 2.0, 12345.0)
+    assert result[0] is True
+    assert result[1] == 9
+
+
 # Without fallback storage: fail_open / fail_closed
 
 def test_fail_open_true_allows_request_sync():
@@ -114,6 +135,7 @@ def test_fail_open_false_denies_request_sync():
     ("fixed_window", ("key", 60, 100, 12345.0)),
     ("token_bucket", ("key", 10, 2.0, 12345.0)),
     ("leaky_bucket", ("key", 5, 1.0, 12345.0)),
+    ("gcra", ("key", 10, 2.0, 12345.0))
 ])
 def test_all_methods_trigger_fallback_sync(method_name, args):
     spy = SpyStorage()
