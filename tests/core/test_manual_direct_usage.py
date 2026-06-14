@@ -7,13 +7,21 @@ from ...core import (
 from ...core.storage import MemoryStorage, AsyncMemoryStorage
 
 # Helpers
-def create_async_limiter(rules_or_resolver):
+def create_async_limiter(rules = None, resolver = None):
     storage = AsyncMemoryStorage()
-    return AsyncRateLimiter(storage, rules_or_resolver)
+    if rules is None and resolver is None:
+        return AsyncRateLimiter(storage)
+    if rules is not None:
+        return AsyncRateLimiter(storage, rules=rules)
+    return AsyncRateLimiter(storage, resolver=resolver)
 
-def create_sync_limiter(rules_or_resolver):
+def create_sync_limiter(rules =  None, resolver = None):
     storage = MemoryStorage()
-    return RateLimiter(storage, rules_or_resolver)
+    if rules is None and resolver is None:
+        return RateLimiter(storage)
+    if rules is not None:
+        return RateLimiter(storage, rules=rules)
+    return RateLimiter(storage, resolver=resolver)
 
 # Async Tests
 
@@ -21,7 +29,7 @@ class TestAsyncManualUsage:
     @pytest.mark.asyncio
     async def test_static_rule_list(self):
         rule = LimitRule(name="test", algorithm="fixed_window", limit=2, window=10)
-        limiter = create_async_limiter([rule])
+        limiter = create_async_limiter(rules=[rule])
         
         # Check within limit
         result = await limiter.check("key1", "test")
@@ -41,7 +49,7 @@ class TestAsyncManualUsage:
     @pytest.mark.asyncio
     async def test_mutable_resolver(self):
         resolver = AsyncRuleResolver()
-        limiter = create_async_limiter(resolver)
+        limiter = create_async_limiter(resolver=resolver)
         rule = LimitRule(name="test", algorithm="sliding_window", limit=3, window=10)
         await resolver.add_rule(rule)
         
@@ -61,15 +69,14 @@ class TestAsyncManualUsage:
 
     @pytest.mark.asyncio
     async def test_remove_rule(self):
-        resolver = AsyncRuleResolver()
-        limiter = create_async_limiter(resolver)
+        limiter = create_async_limiter()
         rule = LimitRule(name="temp", algorithm="fixed_window", limit=1, window=10)
         
-        await resolver.add_rule(rule)
+        await limiter.add_rule(rule)
         result = await limiter.check("key", "temp")
         assert result.allowed is True
         
-        await resolver.remove_rule("temp")
+        await limiter.remove_rule("temp")
         with pytest.raises(ValueError, match="Rule 'temp' not found"):
             await limiter.check("key", "temp")
 
@@ -77,7 +84,7 @@ class TestAsyncManualUsage:
     async def test_static_resolver_function(self):
         rules = [LimitRule(name="api", algorithm="token_bucket", capacity=5, refill_rate=1)]
         resolver = AsyncRuleResolver(rules)
-        limiter = create_async_limiter(resolver)
+        limiter = create_async_limiter(resolver=resolver)
         for i in range(5):
             result = await limiter.check("key", "api")
             assert result.allowed is True
@@ -94,7 +101,7 @@ class TestAsyncManualUsage:
     async def test_key_extractor_not_needed_manual(self):
         # Manual usage passes key directly, no extractor needed.
         rule = LimitRule(name="test", algorithm="fixed_window", limit=1, window=10)
-        limiter = create_async_limiter([rule])
+        limiter = create_async_limiter(rules=[rule])
         result = await limiter.check("alice", "test")
         assert result.allowed is True
         result = await limiter.check("alice", "test")
@@ -107,7 +114,7 @@ class TestAsyncManualUsage:
 class TestSyncManualUsage:
     def test_static_rule_list(self):
         rule = LimitRule(name="test", algorithm="fixed_window", limit=2, window=10)
-        limiter = create_sync_limiter([rule])
+        limiter = create_sync_limiter(rules=[rule])
         result = limiter.check("key", "test")
         assert result.allowed is True
         result = limiter.check("key", "test")
@@ -117,7 +124,7 @@ class TestSyncManualUsage:
 
     def test_mutable_resolver(self):
         resolver = RuleResolver()
-        limiter = create_sync_limiter(resolver)
+        limiter = create_sync_limiter(resolver=resolver)
         rule = LimitRule(name="test", algorithm="fixed_window", limit=3, window=10)
         resolver.add_rule(rule)
         for i in range(3):
@@ -129,7 +136,7 @@ class TestSyncManualUsage:
     def test_static_resolver_function(self):
         rules = [LimitRule(name="api", algorithm="token_bucket", capacity=2, refill_rate=1)]
         resolver = RuleResolver(rules)
-        limiter = create_sync_limiter(resolver)
+        limiter = create_sync_limiter(resolver=resolver)
         result = limiter.check("key", "api")
         assert result.allowed is True
         result = limiter.check("key", "api")

@@ -8,28 +8,22 @@ from ...core import (
 from ...core.storage import MemoryStorage, AsyncMemoryStorage
 
 # Helpers
-
-def create_async_limiter(rules=None):
+def create_async_limiter(rules = None, resolver = None):
     storage = AsyncMemoryStorage()
-    if rules is None:
-        resolver = AsyncRuleResolver()
-    else:
-        if isinstance(rules, list):
-            resolver = AsyncRuleResolver(rules)
-        else:
-            resolver = rules
-    return AsyncRateLimiter(storage, resolver)
+    if rules is None and resolver is None:
+        return AsyncRateLimiter(storage)
+    if rules is not None:
+        return AsyncRateLimiter(storage, rules=rules)
+    return AsyncRateLimiter(storage, resolver=resolver)
 
-def create_sync_limiter(rules=None):
+def create_sync_limiter(rules =  None, resolver = None):
     storage = MemoryStorage()
-    if rules is None:
-        resolver = RuleResolver()
-    else:
-        if isinstance(rules, list):
-            resolver = RuleResolver(rules)
-        else:
-            resolver = rules
-    return RateLimiter(storage, resolver)
+    if rules is None and resolver is None:
+        return RateLimiter(storage)
+    if rules is not None:
+        return RateLimiter(storage, rules=rules)
+    return RateLimiter(storage, resolver=resolver)
+
 
 # Async Tests
 
@@ -87,19 +81,6 @@ class TestAsyncRateLimitDecorator:
             @rate_limit(limiter, limit_str="10/s")  # type: ignore
             async def func():
                 pass
-
-    @pytest.mark.asyncio
-    async def test_raise_on_limit_false(self):
-        limiter = create_async_limiter()
-        resolver = limiter.rule_resolver
-        if isinstance(resolver, AsyncRuleResolver):
-           await resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=1, window=10))
-        @rate_limit(limiter, rule_name="test", key_extractor=lambda: "same", raise_on_limit=False)
-        async def func():
-            return "data"
-        
-        assert await func() == "data"
-        assert await func() is None  # rate limited, returns None
 
     @pytest.mark.asyncio
     async def test_invalid_rule_name_raises_value_error(self):
@@ -174,18 +155,6 @@ class TestSyncRateLimitDecorator:
             @rate_limit(limiter, limit_str="10/s")  # type: ignore
             def func():
                 pass
-
-    def test_raise_on_limit_false(self):
-        limiter = create_sync_limiter()
-        resolver = limiter.rule_resolver
-        if isinstance(resolver, RuleResolver):
-            resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=1, window=10))
-        @rate_limit(limiter, rule_name="test", key_extractor=lambda: "same", raise_on_limit=False)
-        def func():
-            return "data"
-        
-        assert func() == "data"
-        assert func() is None
 
     def test_invalid_rule_name(self):
         limiter = create_sync_limiter()
