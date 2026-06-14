@@ -95,6 +95,28 @@ class AsyncStorage(ABC):
         pass
 
     @abstractmethod
+    async def gcra(
+            self, key: str, capacity: int, rate: float, now: float
+    ) -> Tuple[bool, int, float]:
+        """
+        Process a request through Generic Cell Rate Algorithm.
+        It enforces a steady request rate with a defined burst limit.
+        
+        Args:
+            key: Unique identifier.
+            capacity: Maximum burst size (number of requests that can be sent immediately).
+            rate: Requests processed per second.
+            now: Current Unix timestamp (seconds).
+
+        Returns:
+            (allowed, remaining_capacity, reset_at)
+            - allowed: True if request is within the rate and burst limit.
+            - remaining: Remaining burst capacity (How many additional requests can be sent without waiting).
+            - reset_at: Timestamp when the next request would be allowed.
+        """
+        pass
+
+    @abstractmethod
     async def close(self) -> None:
         """Release any resources (connections, etc.)."""
         pass

@@ -8,7 +8,8 @@ from .algorithms import (
     AsyncSlidingWindowAlgorithm,
     AsyncFixedWindowAlgorithm,
     AsyncTokenBucketAlgorithm,
-    AsyncLeakyBucketAlgorithm
+    AsyncLeakyBucketAlgorithm,
+    AsyncGcraAlgorithm
 )
 
 class AsyncRateLimiter:
@@ -42,6 +43,7 @@ class AsyncRateLimiter:
             "fixed_window": AsyncFixedWindowAlgorithm(),
             "token_bucket": AsyncTokenBucketAlgorithm(),
             "leaky_bucket": AsyncLeakyBucketAlgorithm(),
+            "gcra": AsyncGcraAlgorithm()
         }
 
     @classmethod

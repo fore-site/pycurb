@@ -270,5 +270,69 @@ class AsyncRedisStorage(AsyncStorage):
 
         return allowed, remaining, reset_at
     
+    async def gcra(self, key: str, capacity: int, rate: float, now: float) -> Tuple[bool, int, float]:
+        lua_script = """
+        local key = KEYS[1]
+        local now = ARGV[1]
+        
+        if now == 'server' then
+            local time_parts = redis.call('TIME');
+            now = tonumber(time_parts[1]) + tonumber(time_parts[2]) / 1000000
+        else
+            now = tonumber(now)
+        end
+
+        local rate = tonumber(ARGV[2])
+        local capacity = tonumber(ARGV[3])
+
+        local interval = 1.0 / rate
+        local burst_interval = capacity * interval
+
+        local tat_str = redis.call('GET', key)
+        local tat
+        
+        if tat_str then
+            tat = tonumber(tat_str)
+        else
+            tat = now
+        end
+        
+        local allowed = (tat < now + burst_interval)
+        local new_tat
+        local remaining
+        local reset_at
+
+        if allowed then
+            new_tat = math.max(tat, now) + interval
+            local ttl_ms = math.max(1, math.ceil((new_tat - now + interval) * 1000))
+            redis.call('SET', key, new_tat)
+            redis.call('PEXPIRE', key, ttl_ms)
+            local used_intervals = (new_tat - now) * rate
+            remaining = math.max(0, math.floor(capacity - used_intervals))
+            reset_at = new_tat
+        else
+            remaining = 0
+            reset_at = tat - burst_interval
+        end
+
+        return {allowed and 1 or 0, remaining, reset_at}
+        """
+
+        script = self.redis.register_script(lua_script)
+        if asyncio.iscoroutine(script) or inspect.isawaitable(script):
+            script = await script
+        full_key = self.prefix + "gcra:" + key
+
+        if self.use_redis_time:
+            result = await script(keys=[full_key], args=["server", rate, capacity])
+        else:
+            result = await script(keys=[full_key], args=[now, rate, capacity])
+
+        allowed = bool(result[0])
+        remaining = int(result[1])
+        reset_at = float(result[2])
+
+        return (allowed, remaining, reset_at)
+    
     async def close(self) -> None:
         await self.redis.aclose() 

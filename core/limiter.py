@@ -8,6 +8,7 @@ from .algorithms import (
     FixedWindowAlgorithm,
     TokenBucketAlgorithm,
     LeakyBucketAlgorithm,
+    GcraAlgorithm
 )
 
 class RateLimiter:
@@ -41,6 +42,7 @@ class RateLimiter:
             "fixed_window": FixedWindowAlgorithm(),
             "token_bucket": TokenBucketAlgorithm(),
             "leaky_bucket": LeakyBucketAlgorithm(),
+            "gcra": GcraAlgorithm()
         }
 
     @classmethod

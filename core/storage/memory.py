@@ -12,6 +12,7 @@ class MemoryStorage(Storage):
         self._fixed: Dict[str, Tuple[int, float]] = {}
         self._token: Dict[str, Tuple[float, float]] = {}
         self._leaky: Dict[str, Tuple[int, float]] = {}
+        self._gcra: Dict[str, float] = {}
         self._key_locks: Dict[str, threading.Lock] = {}
         self._global_lock= threading.Lock()
 
@@ -107,6 +108,36 @@ class MemoryStorage(Storage):
             
             else:
                 return False, 0, now + (1 / leak_rate)
+
+    def gcra(self, key: str, capacity: int, rate: float, now: float) -> Tuple[bool, int, float]:
+        lock = self.get_lock(key)
+        with lock:
+            tat = self._gcra.get(key, now)  # default first request
+
+            interval = 1.0 / rate
+            burst_interval = capacity * interval
+
+            # Allowed if TAT is within allowed burst window
+            allowed = tat < now + burst_interval
+
+            if allowed:
+                new_tat = max(tat, now) + interval
+                self._gcra[key] = new_tat
+
+                # Number of scheduled intervals after this request
+                used_intervals = (new_tat - now) * rate
+                remaining = max(0, int(math.floor(capacity - used_intervals)))
+
+                # next theoretical arrival time (when next request would be scheduled)
+                reset_at = new_tat
+            else:
+                remaining = 0
+
+                # earliest timestamp when a new request would be accepted:
+                # solve for t' where tat <= t' + burst_interval -> t' = tat - burst_interval
+                reset_at = tat - burst_interval
+
+            return (allowed, remaining, reset_at)
 
     def close(self) -> None:
         return None

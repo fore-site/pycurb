@@ -11,15 +11,16 @@ class LimitRule(BaseModel):
 
     name: str = Field(..., min_length=1, description="Short unique identifier for the rule.")
     key_type: Literal["ip", "api_key", "user_id", "custom"] = Field(default="ip", description="Hint for adapters on how to extract client key.")
-    algorithm: Literal["sliding_window", "fixed_window", "token_bucket", "leaky_bucket"] = Field(..., description="Rate limit algorithm to use.")
+    algorithm: Literal["sliding_window", "fixed_window", "token_bucket", "leaky_bucket", "gcra"] = Field(..., description="Rate limit algorithm to use.")
     
     # Window algorithms require limit and window; token bucket can use them if capacity and refill_rate are not provided.
-    limit: Optional[int] = Field(default=None, gt=0, description="Maximum requests allowed (window-based) or capacity (token bucket).")
+    limit: Optional[int] = Field(default=None, gt=0, description="Maximum requests allowed (window-based) or capacity (token bucket/gcra).")
     window: Optional[int] = Field(default=None, gt=0, description="Time window in seconds (for window-based algorithms) or base to calculate refill rate.")
     
     # Optional parameters for token bucket and leaky bucket algorithms
-    capacity: Optional[int] = Field(default=None, gt=0, description="Maximum capacity for token bucket (burst limit).")
-    refill_rate: Optional[float] = Field(default=None, gt=0, description="Tokens added per second.")
+    capacity: Optional[int] = Field(default=None, gt=0, description="Maximum capacity for token bucket or gcra (burst limit).")
+
+    refill_rate: Optional[float] = Field(default=None, gt=0, description="Tokens added per second or requests allowed per second for GCRA.")
 
     # Leaky bucket parameter
     leak_rate: Optional[float] = Field(default=None, gt=0, description="Requests processed per second.")
@@ -89,6 +90,29 @@ class LimitRule(BaseModel):
             if rate <= 0:
                 raise ValueError(
                     f"'leak_rate' must be positive, got {rate}"
+                )
+            
+        elif self.algorithm == "gcra":
+            has_cap = self.capacity is not None
+            has_limit = self.limit is not None
+
+            # Must have capacity (or limit) for maximum burst capacity
+            if not (has_cap or has_limit):
+                raise ValueError("'capacity' or 'limit' is required for Gcra algorithm's burst capacity.")
+                        
+            cap = self.capacity if has_cap else self.limit
+            if cap is None:
+                raise ValueError("'capacity' or 'limit' is required for Gcra algorithm's burst capacity.")
+            
+            # Must have refill_rate for requests allowed per second
+            if self.refill_rate is not None:
+                rate = self.refill_rate
+            else:
+                raise ValueError("'refill_rate' is required for Gcra algorithm's requests per second.")
+
+            if rate <= 0:
+                raise ValueError(
+                    f"'refill_rate' must be positive, got {rate}"
                 )
 
         return self
