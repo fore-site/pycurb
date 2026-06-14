@@ -1,10 +1,12 @@
 import functools
 import inspect
-from typing import Callable, Optional, Union, Any, cast
+from typing import Callable, Optional, Union, Any, cast, TypeVar
 from .limiter_async import AsyncRateLimiter
 from .limiter import RateLimiter
 from .models import LimitRule, RateLimitResult
 from ..utils import parse_rate_limit_string
+
+R = TypeVar('R')
 
 def is_async_limiter(limiter):
     return inspect.iscoroutinefunction(limiter.check)
@@ -59,7 +61,7 @@ def rate_limit(
     if key_extractor is None:
         raise TypeError("key_extractor must be provided")
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., R]) -> Callable[..., Optional[R]]:
         func_is_async = inspect.iscoroutinefunction(func)
         limiter_is_async = inspect.iscoroutinefunction(limiter.check)
 
@@ -82,7 +84,7 @@ def rate_limit(
             limiter_async = cast(AsyncRateLimiter, limiter)
 
             @functools.wraps(func)
-            async def async_wrapper(*args, **kwargs):
+            async def async_wrapper(*args, **kwargs) -> Optional[R]:
                 nonlocal _rule_created
                 if need_rule_creation and not _rule_created:
                     # Parse shorthand inside the wrapper (only once)
@@ -100,16 +102,16 @@ def rate_limit(
                 key = key_extractor(*args, **kwargs)
                 result = await limiter_async.check(key, effective_rule_name)
                 if result.allowed:
-                    return await func(*args, **kwargs)
+                    return cast(R, await func(*args, **kwargs))
                 if raise_on_limit:
                     raise RateLimitExceeded(result)
                 return None
-            return async_wrapper
-        if not (func_is_async or limiter_is_async):
+            wrapper = async_wrapper
+        else:
             limiter_sync = cast(RateLimiter, limiter)
             
             @functools.wraps(func)
-            def sync_wrapper(*args, **kwargs):
+            def sync_wrapper(*args, **kwargs) -> Optional[R]:
                 nonlocal _rule_created
                 if need_rule_creation and not _rule_created:
                     limit, window = parse_rate_limit_string(limit_str)  # type: ignore
@@ -126,9 +128,10 @@ def rate_limit(
                 key = key_extractor(*args, **kwargs)
                 result = limiter_sync.check(key, effective_rule_name)
                 if result.allowed:
-                    return func(*args, **kwargs)
+                    return cast(R, func(*args, **kwargs))
                 if raise_on_limit:
                     raise RateLimitExceeded(result)
                 return None
-            return sync_wrapper
+            wrapper = sync_wrapper
+        return cast(Callable[..., Optional[R]], wrapper)
     return decorator
