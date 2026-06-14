@@ -146,3 +146,9 @@ class RateLimitHeaders(BaseModel):
             reset=int(result.reset_at),
             retry_after=retry_after,
         )
+
+class RateLimitExceeded(Exception):
+    def __init__(self, result: RateLimitResult):
+        self.result = result
+        retry_after = max(0, int(result.reset_at - time.time()))
+        super().__init__(f"Rate limit exceeded. Retry after {retry_after} seconds.")

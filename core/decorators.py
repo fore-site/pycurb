@@ -3,16 +3,11 @@ import inspect
 from typing import Callable, Optional, Union, Any, cast
 from .limiter_async import AsyncRateLimiter
 from .limiter import RateLimiter
-from .models import LimitRule, RateLimitResult
+from .models import LimitRule, RateLimitExceeded
 from ..utils import parse_rate_limit_string
 
 def is_async_limiter(limiter):
     return inspect.iscoroutinefunction(limiter.check)
-
-class RateLimitExceeded(Exception):
-    def __init__(self, result: RateLimitResult):
-        self.result = result
-        super().__init__(f"Rate limit exceeded. Retry after {result.reset_at} seconds.")
 
 def arg_extractor(*arg_names: str) -> Callable[..., str]:
     """
