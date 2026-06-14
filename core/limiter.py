@@ -47,6 +47,19 @@ class RateLimiter:
     def from_resolver(cls, storage: Storage, resolver: Callable[[str], LimitRule]):
         return cls(storage, resolver=resolver)
 
+    def add_rule(self, rule: LimitRule) -> None:
+        """Add or replace a rule"""
+        if not hasattr(self.rule_resolver, 'add_rule'):
+            raise TypeError("The rule resolver does not support dynamic rule addition")
+        self.rule_resolver.add_rule(rule)     # type: ignore
+    
+    def remove_rule(self, name: str) -> None:
+        """Remove a rule by name"""
+        if not hasattr(self.rule_resolver, "remove_rule"):
+            raise TypeError("The rule resolver does not support dynamic rule removal")
+        self.rule_resolver.remove_rule(name)      # type: ignore
+
+
     def check(self, key: str, rule_name: str) -> RateLimitResult:
         """
         Check if a request with the given key is allowed under the named rule.

@@ -25,7 +25,7 @@ class AsyncRateLimiter:
 
         Args:
             storage: A storage backend (e.g MemoryStorage, RedisStorage)
-            rules_or_resolver: A list of LimitRule objects 
+            rules: A list of LimitRule objects 
             resolver: A rule resolver instance.
         """
         if rules is not None and resolver is not None:
@@ -47,6 +47,18 @@ class AsyncRateLimiter:
     @classmethod
     async def from_resolver(cls, storage: AsyncStorage, resolver: Callable[[str], LimitRule]):
         return cls(storage, resolver=resolver)
+
+    async def add_rule(self, rule: LimitRule) -> None:
+        """Add or replace a rule"""
+        if not hasattr(self.rule_resolver, 'add_rule'):
+            raise TypeError("The rule resolver does not support dynamic rule addition")
+        await self.rule_resolver.add_rule(rule)     # type: ignore
+    
+    async def remove_rule(self, name: str) -> None:
+        """Remove a rule by name"""
+        if not hasattr(self.rule_resolver, "remove_rule"):
+            raise TypeError("The rule resolver does not support dynamic rule removal")
+        await self.rule_resolver.remove_rule(name)      # type: ignore
 
     async def check(self, key: str, rule_name: str) -> RateLimitResult:
         """

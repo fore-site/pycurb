@@ -42,12 +42,12 @@ class AsyncRuleResolver(AsyncBaseRuleResolver):
                 self._rules[rule.name] = rule
 
     async def add_rule(self, rule: LimitRule) -> None:
-        """Add or replace a rule by name."""
+        """Add or replace a rule.."""
         async with self._lock:
             self._rules[rule.name] = rule
 
     async def remove_rule(self, name: str) -> None:
-        """Remove a rule."""
+        """Remove a rule by name."""
         async with self._lock:
             self._rules.pop(name, None)
 
