@@ -1,5 +1,5 @@
 import inspect
-from typing import Dict, List, Callable, Union, cast, Awaitable
+from typing import Dict, List, Callable, Optional
 from .models import LimitRule, RateLimitResult
 from .storage import AsyncStorage
 from .resolver import AsyncRuleResolver
@@ -17,22 +17,25 @@ class AsyncRateLimiter:
     def __init__(
             self, 
             storage: AsyncStorage, 
-            rules_or_resolver: Union[List[LimitRule], Callable[[str], Awaitable[LimitRule]]]
+            rules: Optional[List[LimitRule]] = None,
+            resolver: Optional[Callable[[str], LimitRule]] = None
         ):
         """
         Initialize the rate limiter
 
         Args:
             storage: A storage backend (e.g MemoryStorage, RedisStorage)
-            rules_or_resolver: A list of LimitRule objects. Each rule must have a unique name
+            rules_or_resolver: A list of LimitRule objects 
+            resolver: A rule resolver instance.
         """
+        if rules is not None and resolver is not None:
+            raise ValueError("Provide either 'rules' or 'resolver'. Not both.") 
         self.storage = storage
-        
-        if isinstance(rules_or_resolver, list):
-            # static rule list
-            self.rule_resolver = AsyncRuleResolver(rules_or_resolver)
+
+        if resolver is not None:
+            self.rule_resolver = resolver
         else:
-            self.rule_resolver = cast(AsyncRuleResolver, rules_or_resolver)
+            self.rule_resolver = AsyncRuleResolver(rules or [])
 
         self.algorithms: Dict[str, AsyncRateLimiterAlgorithm] = {
             "sliding_window": AsyncSlidingWindowAlgorithm(),
@@ -42,8 +45,8 @@ class AsyncRateLimiter:
         }
 
     @classmethod
-    async def from_resolver(cls, storage: AsyncStorage, resolver: Callable[[str], Awaitable[LimitRule]]):
-        return cls(storage, resolver)
+    async def from_resolver(cls, storage: AsyncStorage, resolver: Callable[[str], LimitRule]):
+        return cls(storage, resolver=resolver)
 
     async def check(self, key: str, rule_name: str) -> RateLimitResult:
         """

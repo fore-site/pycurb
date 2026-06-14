@@ -1,4 +1,4 @@
-from typing import Dict, List, Callable, Union, cast
+from typing import Dict, List, Callable, Optional
 from .models import LimitRule, RateLimitResult
 from .storage import Storage
 from .resolver import RuleResolver
@@ -15,21 +15,26 @@ class RateLimiter:
 
     def __init__(self, 
                  storage: Storage, 
-                 rules_or_resolver: Union[List[LimitRule], Callable[[str], LimitRule]]
+                 rules: Optional[List[LimitRule]] = None,
+                 resolver: Optional[Callable[[str], LimitRule]] = None
         ):
         """
         Initialize the rate limiter
 
         Args:
             storage: A storage backend (e.g MemoryStorage, RedisStorage)
-            rules_or_resolver: A list of LimitRule objects. Each rule must have a unique name
+            rules: A list of LimitRule objects.
+            resolver: A custom rule resolver instance.
         """
+        if rules is not None and resolver is not None:
+            raise ValueError("Provide either 'rules' or 'resolver'. Not both.")
+
         self.storage = storage
 
-        if isinstance(rules_or_resolver, list):
-            self.rule_resolver = RuleResolver(rules_or_resolver)
+        if resolver is not None:
+            self.rule_resolver = resolver
         else:
-            self.rule_resolver = cast(RuleResolver, rules_or_resolver)
+            self.rule_resolver = RuleResolver(rules or [])            
 
         self.algorithms: Dict[str, RateLimiterAlgorithm] = {
             "sliding_window": SlidingWindowAlgorithm(),
@@ -40,7 +45,7 @@ class RateLimiter:
 
     @classmethod
     def from_resolver(cls, storage: Storage, resolver: Callable[[str], LimitRule]):
-        return cls(storage, resolver)
+        return cls(storage, resolver=resolver)
 
     def check(self, key: str, rule_name: str) -> RateLimitResult:
         """

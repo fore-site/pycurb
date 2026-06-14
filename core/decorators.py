@@ -96,7 +96,10 @@ def rate_limit(
                         window=window,
                     )
                     resolver = limiter_async.rule_resolver
-                    await resolver.add_rule(rule)
+                    if not hasattr(resolver, 'add_rule'):
+                        raise TypeError("Resolver instance must have 'add_rule' attribute when using 'limit_str' in decorator")
+
+                    await resolver.add_rule(rule)   # type: ignore
                     _rule_created = True
 
                 key = key_extractor(*args, **kwargs)
@@ -122,7 +125,10 @@ def rate_limit(
                         window=window,
                     )
                     resolver = limiter_sync.rule_resolver
-                    resolver.add_rule(rule)
+                    if not hasattr(resolver, 'add_rule'):
+                        raise TypeError("Resolver class must have 'add_rule' attribute when using 'limit_str' in decorator")
+                    
+                    resolver.add_rule(rule)     # type: ignore
                     _rule_created = True
 
                 key = key_extractor(*args, **kwargs)

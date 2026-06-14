@@ -1,9 +1,33 @@
 from typing import Dict, List, Optional
 from .models import LimitRule
+from abc import ABC, abstractmethod
 import asyncio
 import threading
 
-class AsyncRuleResolver:
+class BaseRuleResolver(ABC):
+    """Base interface for resolvers."""
+    @abstractmethod
+    def __call__(self, name: str) -> LimitRule:
+        """Resolve a rule by name."""
+        pass
+
+    def add_rule(self, rule: LimitRule) -> None:
+        """Optional: add a rule dynamically. Override if supported."""
+        raise NotImplementedError("This resolver does not support dynamic rule addition.")
+
+class AsyncBaseRuleResolver(ABC):
+    """Base interface for asynchronous resolvers."""
+    @abstractmethod
+    async def __call__(self, name: str) -> LimitRule:
+        """Resolve a rule by name."""
+        pass
+
+    async def add_rule(self, rule: LimitRule) -> None:
+        """Optional: add a rule dynamically. Override if supported."""
+        raise NotImplementedError("This resolver does not support dynamic rule addition.")
+
+
+class AsyncRuleResolver(AsyncBaseRuleResolver):
     """
     Async rule resolver that stores rules in memory and allows dynamic addition/update.
     Implements the callable interface expected by RateLimiter.
@@ -34,7 +58,7 @@ class AsyncRuleResolver:
             return self._rules[name]
 
 
-class RuleResolver:
+class RuleResolver(BaseRuleResolver):
     """
     Sync rule resolver that stores rules in memory and allows dynamic addition/update.
     Implements the callable interface expected by RateLimiter.
