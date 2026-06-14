@@ -1,7 +1,6 @@
 import functools
 import inspect
 from typing import Callable, Optional, Union, Any, cast
-from .resolver import RuleResolver, AsyncRuleResolver
 from .limiter_async import AsyncRateLimiter
 from .limiter import RateLimiter
 from .models import LimitRule, RateLimitResult

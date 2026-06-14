@@ -1,5 +1,5 @@
 import inspect
-from typing import Dict, List, Callable, Union, cast
+from typing import Dict, List, Callable, Union, cast, Awaitable
 from .models import LimitRule, RateLimitResult
 from .storage import AsyncStorage
 from .resolver import AsyncRuleResolver
@@ -17,7 +17,7 @@ class AsyncRateLimiter:
     def __init__(
             self, 
             storage: AsyncStorage, 
-            rules_or_resolver: Union[List[LimitRule], Callable[[str], LimitRule]]
+            rules_or_resolver: Union[List[LimitRule], Callable[[str], Awaitable[LimitRule]]]
         ):
         """
         Initialize the rate limiter
@@ -42,7 +42,7 @@ class AsyncRateLimiter:
         }
 
     @classmethod
-    async def from_resolver(cls, storage: AsyncStorage, resolver: Callable[[str], LimitRule]):
+    async def from_resolver(cls, storage: AsyncStorage, resolver: Callable[[str], Awaitable[LimitRule]]):
         return cls(storage, resolver)
 
     async def check(self, key: str, rule_name: str) -> RateLimitResult:
