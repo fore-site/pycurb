@@ -1,6 +1,6 @@
 import pytest
-from ...core import RateLimiter, AsyncRateLimiter, LimitRule
-from ...core.algorithms import sliding_window_async as sw_module
+from pycurb.core import RateLimiter, AsyncRateLimiter, LimitRule
+from pycurb.core.algorithms import sliding_window_async as sw_module
 
 
 BASE_TIME = 1_700_000_000.25

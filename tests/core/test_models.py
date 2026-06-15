@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from ...core.models import LimitRule, RateLimitResult, RateLimitHeaders
+from pycurb.core.models import LimitRule, RateLimitResult, RateLimitHeaders
 import time
 
 class TestLimitRule:

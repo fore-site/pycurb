@@ -1,10 +1,10 @@
 import pytest
-from ...core import (
+from pycurb.core import (
     RateLimiter, AsyncRateLimiter,
     RuleResolver, AsyncRuleResolver,
     LimitRule
 )
-from ...core.storage import MemoryStorage, AsyncMemoryStorage
+from pycurb.core.storage import MemoryStorage, AsyncMemoryStorage
 
 # Helpers
 def create_async_limiter(rules = None, resolver = None):

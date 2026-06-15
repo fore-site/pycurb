@@ -2,7 +2,7 @@ from typing import Tuple
 
 import pytest
 import redis.exceptions
-from ...core.storage import MemoryStorage, RedisStorage
+from pycurb.core.storage import MemoryStorage, RedisStorage
 
 # Helper: Failing Redis Client (sync)
 class FailingRedisClient:

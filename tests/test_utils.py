@@ -1,5 +1,5 @@
 import pytest
-from ..utils import parse_duration, parse_rate_limit_string
+from pycurb.utils import parse_duration, parse_rate_limit_string
 
 class TestParseDuration:
     def test_seconds(self):

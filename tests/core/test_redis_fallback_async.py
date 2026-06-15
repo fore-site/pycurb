@@ -1,6 +1,6 @@
 import pytest
 import redis.exceptions
-from ...core.storage import AsyncMemoryStorage, AsyncRedisStorage
+from pycurb.core.storage import AsyncMemoryStorage, AsyncRedisStorage
 from typing import Tuple
 
 # Helper: Failing Redis Client (async)

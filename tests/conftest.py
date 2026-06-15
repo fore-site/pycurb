@@ -3,7 +3,7 @@ import pytest_asyncio
 import redis
 import redis.asyncio as aioredis
 from unittest.mock import AsyncMock, MagicMock
-from ..core.storage import (
+from pycurb.core.storage import (
     RedisStorage,
     AsyncRedisStorage,
     MemoryStorage,

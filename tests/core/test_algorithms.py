@@ -1,6 +1,6 @@
 import pytest
 
-from ...core.algorithms import (
+from pycurb.core.algorithms import (
     FixedWindowAlgorithm,
     AsyncFixedWindowAlgorithm,
     LeakyBucketAlgorithm,
@@ -12,17 +12,17 @@ from ...core.algorithms import (
     GcraAlgorithm,
     AsyncGcraAlgorithm,
 )
-from ...core.algorithms import fixed_window_async as fixed_window_module
-from ...core.algorithms import fixed_window as fixed_window_sync_module
-from ...core.algorithms import leaky_bucket_async as leaky_bucket_module
-from ...core.algorithms import leaky_bucket as leaky_bucket_sync_module
-from ...core.algorithms import sliding_window_async as sliding_window_module
-from ...core.algorithms import sliding_window as sliding_window_sync_module
-from ...core.algorithms import token_bucket_async as token_bucket_module
-from ...core.algorithms import token_bucket as token_bucket_sync_module
-from ...core.algorithms import gcra_async as gcra_module
-from ...core.algorithms import gcra as gcra_sync_module
-from ...core.models import LimitRule, RateLimitResult
+from pycurb.core.algorithms import fixed_window_async as fixed_window_module
+from pycurb.core.algorithms import fixed_window as fixed_window_sync_module
+from pycurb.core.algorithms import leaky_bucket_async as leaky_bucket_module
+from pycurb.core.algorithms import leaky_bucket as leaky_bucket_sync_module
+from pycurb.core.algorithms import sliding_window_async as sliding_window_module
+from pycurb.core.algorithms import sliding_window as sliding_window_sync_module
+from pycurb.core.algorithms import token_bucket_async as token_bucket_module
+from pycurb.core.algorithms import token_bucket as token_bucket_sync_module
+from pycurb.core.algorithms import gcra_async as gcra_module
+from pycurb.core.algorithms import gcra as gcra_sync_module
+from pycurb.core.models import LimitRule, RateLimitResult
 
 
 BASE_TIME = 1_700_000_000.25
