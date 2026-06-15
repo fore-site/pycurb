@@ -12,8 +12,10 @@ class AsyncGcraAlgorithm(AsyncRateLimiterAlgorithm):
         if rule.refill_rate is not None:
             rate = rule.refill_rate
         else:
-            raise ValueError("Gcra algorithm requires rate equal to 'refill_rate'")
-        
+            if rule.window is None:
+                raise ValueError("Gcra algorithm requires rate equal to 'refill_rate'")
+            rate = capacity / rule.window
+
         if rate <= 0:
             raise ValueError(f"rate must be positive, got {rate}")
         

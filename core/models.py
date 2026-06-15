@@ -108,7 +108,9 @@ class LimitRule(BaseModel):
             if self.refill_rate is not None:
                 rate = self.refill_rate
             else:
-                raise ValueError("'refill_rate' is required for Gcra algorithm's requests per second.")
+                if self.window is None:
+                    raise ValueError("'window' is required for Gcra algorithm's requests per second if 'refill_rate' is not provided.")
+                rate = cap / self.window
 
             if rate <= 0:
                 raise ValueError(

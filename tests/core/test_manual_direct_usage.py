@@ -81,6 +81,26 @@ class TestAsyncManualUsage:
             await limiter.check("key", "temp")
 
     @pytest.mark.asyncio
+    async def test_static_gcra_rule_list(self):
+        rule = LimitRule(name="gcra_api", algorithm="gcra", capacity=2, refill_rate=1.0)
+        limiter = create_async_limiter(rules=[rule])
+
+        # Check within limit
+        result = await limiter.check("key1", "gcra_api")
+        assert result.allowed is True
+        assert result.remaining == 1
+        # Second request allowed
+        result = await limiter.check("key1", "gcra_api")
+        assert result.allowed is True
+        assert result.remaining == 0
+        # Third denied
+        result = await limiter.check("key1", "gcra_api")
+        assert result.allowed is False
+        # Different key independent
+        result = await limiter.check("key2", "gcra_api")
+        assert result.allowed is True
+
+    @pytest.mark.asyncio
     async def test_static_resolver_function(self):
         rules = [LimitRule(name="api", algorithm="token_bucket", capacity=5, refill_rate=1)]
         resolver = AsyncRuleResolver(rules)
@@ -120,6 +140,17 @@ class TestSyncManualUsage:
         result = limiter.check("key", "test")
         assert result.allowed is True
         result = limiter.check("key", "test")
+        assert result.allowed is False
+
+    def test_static_gcra_rule_list(self):
+        rule = LimitRule(name="gcra_api", algorithm="gcra", capacity=2, refill_rate=1.0)
+        limiter = create_sync_limiter(rules=[rule])
+
+        result = limiter.check("key", "gcra_api")
+        assert result.allowed is True
+        result = limiter.check("key", "gcra_api")
+        assert result.allowed is True
+        result = limiter.check("key", "gcra_api")
         assert result.allowed is False
 
     def test_mutable_resolver(self):

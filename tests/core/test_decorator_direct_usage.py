@@ -75,6 +75,19 @@ class TestAsyncRateLimitDecorator:
             await func("a")
 
     @pytest.mark.asyncio
+    async def test_inline_rule_gcra_algorithm(self):
+        limiter = create_async_limiter()
+        @rate_limit(limiter, limit_str="2/10s", algorithm="gcra", key_extractor=arg_extractor("uid"))
+        async def func(uid: str):
+            return "ok"
+
+        for _ in range(2):
+            assert await func(uid="x") == "ok"
+        with pytest.raises(RateLimitExceeded):
+            await func(uid="x")
+        assert await func(uid="y") == "ok"
+
+    @pytest.mark.asyncio
     async def test_no_key_extractor_raises_type_error(self):
         limiter = create_async_limiter()
         with pytest.raises(TypeError):
@@ -121,6 +134,22 @@ class TestAsyncRateLimitDecorator:
         assert await func2() == 2
         with pytest.raises(RateLimitExceeded):
             await func2()
+
+    @pytest.mark.asyncio
+    async def test_named_rule_gcra_with_key_extractor(self):
+        limiter = create_async_limiter()
+        resolver = limiter.rule_resolver
+        if isinstance(resolver, AsyncRuleResolver):
+            await resolver.add_rule(LimitRule(name="gcra_test", algorithm="gcra", capacity=2, refill_rate=0.2))
+        @rate_limit(limiter, rule_name="gcra_test", key_extractor=lambda user: str(user))
+        async def fn(user: str):
+            return "ok"
+
+        assert await fn("a") == "ok"
+        assert await fn("a") == "ok"
+        with pytest.raises(RateLimitExceeded):
+            await fn("a")
+        assert await fn("b") == "ok"
 
 # Sync Tests
 class TestSyncRateLimitDecorator:
