@@ -213,3 +213,64 @@ class TestSyncRateLimitDecorator:
         with pytest.raises(RateLimitExceeded):
             func(uid="a")
         assert func(uid="b") == "b"
+
+    # Composite decorator tests (async + sync)
+    @pytest.mark.asyncio
+    async def test_named_multiple_rules_decorator_async(self):
+        limiter = create_async_limiter()
+        resolver = limiter.rule_resolver
+        if isinstance(resolver, AsyncRuleResolver):
+            await resolver.add_rule(LimitRule(name="r1", algorithm="fixed_window", limit=2, window=10))
+            await resolver.add_rule(LimitRule(name="r2", algorithm="fixed_window", limit=3, window=10))
+
+        @rate_limit(limiter, rule_name=["r1", "r2"], key_extractor=lambda user: str(user))
+        async def fn(user: str):
+            return "ok"
+
+        assert await fn("u") == "ok"
+        assert await fn("u") == "ok"
+        with pytest.raises(RateLimitExceeded):
+            await fn("u")
+        assert await fn("v") == "ok"
+
+    @pytest.mark.asyncio
+    async def test_decorator_multiple_rules_missing_raises_async(self):
+        limiter = create_async_limiter()
+        resolver = limiter.rule_resolver
+        if isinstance(resolver, AsyncRuleResolver):
+            await resolver.add_rule(LimitRule(name="exists", algorithm="fixed_window", limit=1, window=10))
+
+        @rate_limit(limiter, rule_name=["exists", "missing"], key_extractor=lambda: "k")
+        async def fn():
+            return "ok"
+
+        with pytest.raises(ValueError, match="Rule 'missing' not found"):
+            await fn()
+
+    def test_named_multiple_rules_decorator_sync(self):
+        limiter = create_sync_limiter()
+        resolver = limiter.rule_resolver
+        if isinstance(resolver, RuleResolver):
+            resolver.add_rule(LimitRule(name="r1", algorithm="fixed_window", limit=1, window=10))
+            resolver.add_rule(LimitRule(name="r2", algorithm="fixed_window", limit=2, window=10))
+
+        @rate_limit(limiter, rule_name=["r1", "r2"], key_extractor=lambda: "k")
+        def fn():
+            return "ok"
+
+        assert fn() == "ok"
+        with pytest.raises(RateLimitExceeded):
+            fn()
+
+    def test_decorator_multiple_rules_missing_raises_sync(self):
+        limiter = create_sync_limiter()
+        resolver = limiter.rule_resolver
+        if isinstance(resolver, RuleResolver):
+            resolver.add_rule(LimitRule(name="exists", algorithm="fixed_window", limit=1, window=10))
+
+        @rate_limit(limiter, rule_name=["exists", "missing"], key_extractor=lambda: "k")
+        def fn():
+            return "ok"
+
+        with pytest.raises(ValueError):
+            fn()

@@ -118,6 +118,40 @@ class TestAsyncManualUsage:
             await limiter.check("key", "unknown")
 
     @pytest.mark.asyncio
+    async def test_composite_rules_manual_async(self):
+        # Two predefined rules applied together: overall decision should be
+        # the most restrictive (i.e., if any denies, composite denies).
+        r1 = LimitRule(name="r1", algorithm="fixed_window", limit=2, window=10)
+        r2 = LimitRule(name="r2", algorithm="sliding_window", limit=3, window=10)
+        limiter = create_async_limiter(rules=[r1, r2])
+
+        # First request: both allow; remaining should be min(1,2) == 1
+        res = await limiter.check("user", ["r1", "r2"])
+        assert res.allowed is True
+        assert res.remaining == 1
+
+        # Second request: r1 still allows (remaining 0), r2 allows; composite allowed
+        res = await limiter.check("user", ["r1", "r2"])
+        assert res.allowed is True
+        assert res.remaining == 0
+
+        # Third request: r1 denies (exhausted), composite should deny
+        res = await limiter.check("user", ["r1", "r2"])
+        assert res.allowed is False
+
+    @pytest.mark.asyncio
+    async def test_composite_result_selection_async(self):
+        # Verify composite returns the most-restrictive metadata when multiple rules allow
+        r1 = LimitRule(name="a", algorithm="fixed_window", limit=2, window=10)
+        r2 = LimitRule(name="b", algorithm="fixed_window", limit=5, window=10)
+        limiter = create_async_limiter(rules=[r1, r2])
+
+        # One request: a.remaining = 1, b.remaining = 4 -> composite.remaining == 1
+        res = await limiter.check("k", ["a", "b"])
+        assert res.allowed is True
+        assert res.remaining == 1
+
+    @pytest.mark.asyncio
     async def test_key_extractor_not_needed_manual(self):
         # Manual usage passes key directly, no extractor needed.
         rule = LimitRule(name="test", algorithm="fixed_window", limit=1, window=10)
@@ -179,3 +213,26 @@ class TestSyncManualUsage:
         limiter = create_sync_limiter([])
         with pytest.raises(ValueError):
             limiter.check("key", "missing")
+
+    def test_composite_rules_manual_sync(self):
+        r1 = LimitRule(name="r1", algorithm="fixed_window", limit=1, window=10)
+        r2 = LimitRule(name="r2", algorithm="fixed_window", limit=2, window=10)
+        limiter = create_sync_limiter(rules=[r1, r2])
+
+        # First request allowed
+        res = limiter.check("x", ["r1", "r2"])
+        assert res.allowed is True
+
+        # Second request denied because r1 (limit=1) is exhausted
+        res = limiter.check("x", ["r1", "r2"])
+        assert res.allowed is False
+
+    def test_composite_result_selection_sync(self):
+        r1 = LimitRule(name="a", algorithm="fixed_window", limit=3, window=10)
+        r2 = LimitRule(name="b", algorithm="fixed_window", limit=2, window=10)
+        limiter = create_sync_limiter(rules=[r1, r2])
+
+        res = limiter.check("k", ["a", "b"])
+        assert res.allowed is True
+        # a.remaining = 2, b.remaining = 1 -> composite.remaining == 1
+        assert res.remaining == 1
