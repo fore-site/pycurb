@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Callable, Optional, Union, Any, cast
+from typing import Callable, Optional, Union, Any, List, cast
 from .limiter_async import AsyncRateLimiter
 from .limiter import RateLimiter
 from .models import LimitRule, RateLimitExceeded
@@ -30,7 +30,7 @@ def arg_extractor(*arg_names: str) -> Callable[..., str]:
 def rate_limit(
     limiter: Union[RateLimiter, AsyncRateLimiter],
     *,
-    rule_name: Optional[str] = None,
+    rule_name: Optional[Union[str, List[str]]] = None,
     limit_str: Optional[str] = None,
     algorithm: str = "sliding_window",
     key_extractor: Optional[Callable[..., str]]
@@ -40,7 +40,7 @@ def rate_limit(
 
     Args:
         limiter: RateLimiter (async) or RateLimiterSync (sync) instance.
-        rule_name: Name of an existing rule in the limiter's resolver.
+        rule_name: Name of an existing rule in the limiter's resolver. Also accepts a list of names.
         limit_str: Shorthand string (e.g., "100/s") to create a new rule.
         algorithm: Algorithm to use when creating a rule from limit_str.
         key_extractor: Function extracting key (unique identifier) from function arguments.
@@ -82,7 +82,7 @@ def rate_limit(
                     # Parse shorthand inside the wrapper (only once)
                     limit, window = parse_rate_limit_string(limit_str)  # type: ignore
                     rule = LimitRule(
-                        name=effective_rule_name,
+                        name=cast(str, effective_rule_name),
                         algorithm=algorithm,    #type: ignore
                         limit=limit,
                         window=window,
@@ -110,7 +110,7 @@ def rate_limit(
                 if need_rule_creation and not _rule_created:
                     limit, window = parse_rate_limit_string(limit_str)  # type: ignore
                     rule = LimitRule(
-                        name=effective_rule_name,
+                        name=cast(str, effective_rule_name),
                         algorithm=algorithm,    # type: ignore
                         limit=limit,
                         window=window,
