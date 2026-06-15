@@ -1,4 +1,4 @@
-from typing import Dict, List, Callable, Optional
+from typing import Dict, List, Callable, Optional, Union
 from .models import LimitRule, RateLimitResult
 from .storage import Storage
 from .resolver import RuleResolver
@@ -61,8 +61,33 @@ class RateLimiter:
             raise TypeError("The rule resolver does not support dynamic rule removal")
         self.rule_resolver.remove_rule(name)      # type: ignore
 
+    def check(self, key: str, rule_names: Union[str, List[str]]) -> RateLimitResult:
+        """
+        Check if a request with the given key is allowed under the named rule(s).
 
-    def check(self, key: str, rule_name: str) -> RateLimitResult:
+        Args:
+            key: A unique identifier for the client (e.g IP, client_id, API key)
+            rule_names: The name of the limit rule to apply. Also accepts multiple rules.
+
+        Returns:
+            RateLimitResult: Decision and metadata
+
+        Raises:
+            ValueError: If the rule name(s) is unknown or algorithm is not supported.
+        """
+        
+        if isinstance(rule_names, str):
+            return self._check_single(key, rule_names)
+        results = []
+        for name in rule_names:
+            res = self._check_single(key, name)
+            if not res.allowed:
+                return res
+            results.append(res)
+
+        return min(results, key=lambda r : (r.remaining, r.reset_at))
+
+    def _check_single(self, key: str, rule_name: str) -> RateLimitResult:
         """
         Check if a request with the given key is allowed under the named rule.
 
