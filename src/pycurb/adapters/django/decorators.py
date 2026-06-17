@@ -19,7 +19,7 @@ def rate_limit(
     """
     def decorator(view_func):
         is_async = inspect.iscoroutinefunction(view_func)
-        limiter_is_async = isinstance(limiter, RateLimiter)  # RateLimiter is async
+        limiter_is_async = isinstance(limiter, AsyncRateLimiter)  # RateLimiter is async
 
         if is_async and not limiter_is_async:
             raise TypeError("Async view requires an async RateLimiter (use AsyncRateLimiter, not RateLimiter)")
@@ -30,12 +30,16 @@ def rate_limit(
         def sync_wrapper(request, *args, **kwargs):
             key = key_extractor(request)
             limiter_sync = cast(RateLimiter, limiter)
-            try:
-                result = limiter_sync.check(key, rule_name)
-            except RateLimitExceeded as e:
+            result = limiter_sync.check(key, rule_name)
+            if not result.allowed:
                 if on_limit:
-                    return on_limit(request, e)
-                return JsonResponse({"detail": "Rate limit exceeded"}, status=429)
+                    return on_limit(request, result)
+                headers = RateLimitHeaders.from_result(result)
+                response = JsonResponse({"detail": "Rate limit exceeded"}, status=429)
+                for name, value in headers.to_dict().items():
+                    response[name] = value
+                return response
+                
             response = view_func(request, *args, **kwargs)
             headers = RateLimitHeaders.from_result(result)
             for name, value in headers.to_dict().items():
@@ -46,12 +50,16 @@ def rate_limit(
         async def async_wrapper(request, *args, **kwargs):
             key = key_extractor(request)
             limiter_async = cast(AsyncRateLimiter, limiter)
-            try:
-                result = await limiter_async.check(key, rule_name)
-            except RateLimitExceeded as e:
+            result = await limiter_async.check(key, rule_name)
+            if not result.allowed:
                 if on_limit:
-                    return on_limit(request, e)
-                return JsonResponse({"detail": "Rate limit exceeded"}, status=429)
+                    return on_limit(request, result)
+                headers = RateLimitHeaders.from_result(result)
+                response = JsonResponse({"detail": "Rate limit exceeded"}, status=429)
+                for name, value in headers.to_dict().items():
+                    response[name] = value
+                return response
+            
             response = await view_func(request, *args, **kwargs)
             headers = RateLimitHeaders.from_result(result)
             for name, value in headers.to_dict().items():

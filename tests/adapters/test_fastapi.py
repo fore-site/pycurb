@@ -25,6 +25,7 @@ def limiter():
         LimitRule(name="gcra", algorithm="gcra", capacity=4, refill_rate=2.0),
     ]
     return AsyncRateLimiter(storage, rules)
+
 @pytest.fixture
 def app(limiter):
     app = FastAPI()
