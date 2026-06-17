@@ -2,7 +2,6 @@ import pytest
 from flask import Flask, jsonify
 from pycurb.core import RateLimiter, MemoryStorage, LimitRule
 from pycurb.adapters.flask import rate_limit, RateLimit, ip_extractor, api_key_extractor
-from pycurb.adapters.flask import flask_login_user_extractor as user_id_extractor
 import time
 
 # Fixtures
