@@ -1,5 +1,5 @@
 from .extractors import ip_extractor, api_key_extractor, user_id_extractor, custom_extractor
-from .dependencies import rate_limit_dep
+from .dependencies import rate_limiter
 from .middleware import RateLimitMiddleware
 
 __all__ = [
@@ -7,6 +7,6 @@ __all__ = [
     "api_key_extractor",
     "user_id_extractor",
     "custom_extractor",
-    "rate_limit_dep",
+    "rate_limiter",
     "RateLimitMiddleware",
 ]
