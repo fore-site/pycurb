@@ -26,5 +26,9 @@ fastapi = [
     "starlette>=1.0.0"
 ]
 django = ["django>=5.2.15"]
+flask = [
+    "flask>=3.0.0",
+    "flask-login>=0.6.3"
+]
 redis = ["redis>=8.0.0"]
-all = ["pycurb[redis,fastapi,django]"]
+all = ["pycurb[redis,fastapi,django,flask]"]

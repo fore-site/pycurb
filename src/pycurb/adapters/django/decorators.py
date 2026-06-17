@@ -2,7 +2,7 @@ import functools
 import inspect
 from typing import Union, List, Callable, Optional, cast
 from django.http import JsonResponse, HttpRequest
-from pycurb.core import RateLimiter, AsyncRateLimiter, RateLimitExceeded
+from pycurb.core import RateLimiter, AsyncRateLimiter
 from pycurb.core.models import RateLimitHeaders
 from .extractors import ip_extractor
 

@@ -11,7 +11,7 @@ def create_rate_limit_middleware(
 ):
     """
     Factory that returns a Django middleware class for global rate limiting.
-    Works with both sync and async limiters, but Django middleware is sync.
+    Works with sync limiter for now.
     If you use async limiter, you must ensure it is compatible with sync calls
     (e.g., by using asyncio.run). For simplicity, use RateLimiter.
     """
