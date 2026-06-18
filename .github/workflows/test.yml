@@ -38,7 +38,7 @@ jobs:
         shell: bash
 
       - name: Start Redis (Linux only)
-        if runner.os == 'Linux':
+        if: runner.os == 'Linux'
         run: |
           docker run -d --name redis -p 6379:6379 redis
           sleep 5
