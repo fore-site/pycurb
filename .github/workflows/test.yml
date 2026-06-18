@@ -34,6 +34,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          uv venv
           uv pip install --system -e .[all] --group dev
         shell: bash
 
@@ -44,7 +45,7 @@ jobs:
           sleep 5
 
       - name: Run tests
-        run: uv run --no-sync pytest tests/ -v
+        run: uv run pytest tests/ -v
         env:
           REDIS_HOST: localhost
 
