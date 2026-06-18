@@ -86,7 +86,6 @@ async def async_redis_storage_with_server_time():
 
     time_counter = [1000.0]  # start at 1000 seconds
     async def mock_time():
-        # Increment slightly each call to simulate real time
         time_counter[0] += 0.1
         seconds = int(time_counter[0])
         microseconds = int((time_counter[0] - seconds) * 1_000_000)

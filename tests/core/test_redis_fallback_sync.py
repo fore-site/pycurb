@@ -4,14 +4,14 @@ import pytest
 import redis.exceptions
 from pycurb.core.storage import MemoryStorage, RedisStorage
 
-# Helper: Failing Redis Client (sync)
+# Helper: Failing Redis Client
 class FailingRedisClient:
     def __getattr__(self, name):
         def failing(*args, **kwargs):
             raise redis.exceptions.ConnectionError(f"Simulated Redis failure for {name}")
         return failing
 
-# Spy Storage (sync)
+# Spy Storage
 class SpyStorage(MemoryStorage):
     def __init__(self):
         super().__init__()

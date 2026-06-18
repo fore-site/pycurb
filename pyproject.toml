@@ -1,16 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "pycurb"
 version = "0.1.0"
-description = "A framework-agnostic python rate limit library"
+description = "A framework-agnostic Python rate limit library"
 readme = "README.md"
+license = {text = "Apache"}
+authors = [
+    {name = "Oluwaseun Ogunsanu", email = "ogunsanu17@gmail.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: Apache License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.13.4",
 ]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["pycurb*"]
 
 [dependency-groups]
 dev = [
@@ -32,3 +46,16 @@ flask = [
 ]
 redis = ["redis>=8.0.0"]
 all = ["pycurb[redis,fastapi,django,flask]"]
+
+[project.urls]
+Homepage = "https://github.com/fore-site/pycurb"
+Repository = "https://github.com/fore-site/pycurb"
+Documentation = "https://pycurb.readthedocs.io/"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pycurb*"]
+
+[tool.setuptools.package-data]
+pycurb = ["py.typed"]
+

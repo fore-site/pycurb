@@ -63,7 +63,6 @@ class TestAsyncManualUsage:
         # Replace rule with higher limit
         new_rule = LimitRule(name="test", algorithm="sliding_window", limit=5, window=10)
         await resolver.add_rule(new_rule)
-        # Now should allow again (new window starts fresh or count reset)
         result = await limiter.check("key", "test")
         assert result.allowed is True
 
@@ -119,13 +118,11 @@ class TestAsyncManualUsage:
 
     @pytest.mark.asyncio
     async def test_composite_rules_manual_async(self):
-        # Two predefined rules applied together: overall decision should be
-        # the most restrictive (i.e., if any denies, composite denies).
         r1 = LimitRule(name="r1", algorithm="fixed_window", limit=2, window=10)
         r2 = LimitRule(name="r2", algorithm="sliding_window", limit=3, window=10)
         limiter = create_async_limiter(rules=[r1, r2])
 
-        # First request: both allow; remaining should be min(1,2) == 1
+        # First request: both allow
         res = await limiter.check("user", ["r1", "r2"])
         assert res.allowed is True
         assert res.remaining == 1
@@ -153,7 +150,6 @@ class TestAsyncManualUsage:
 
     @pytest.mark.asyncio
     async def test_key_extractor_not_needed_manual(self):
-        # Manual usage passes key directly, no extractor needed.
         rule = LimitRule(name="test", algorithm="fixed_window", limit=1, window=10)
         limiter = create_async_limiter(rules=[rule])
         result = await limiter.check("alice", "test")

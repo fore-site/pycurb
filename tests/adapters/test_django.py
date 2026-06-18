@@ -154,7 +154,7 @@ class TestSyncDecorator:
             return JsonResponse({"ok": True})
 
         request = factory.get("/")
-        # global limit=2, strict limit=1 → stricter is strict
+        # global limit=2, strict limit=1, therefore the stricter rule is 'strict'
         response = view(request)
         assert response.status_code == 200
         # remaining should be 0 (strict has limit=1, after 1 request remaining=0)
@@ -387,9 +387,8 @@ class TestExtractors:
     def test_api_key_extractor(self, factory):
         request = factory.get("/", HTTP_X_API_KEY="secret-key")
         assert api_key_extractor(request) == "secret-key"
-        # default header name
-        request = factory.get("/", HTTP_AUTHORIZATION="Bearer token")  # not used
-        assert api_key_extractor(request) == ""  # returns empty
+        request = factory.get("/", HTTP_AUTHORIZATION="Bearer token")
+        assert api_key_extractor(request) == ""
 
 # Edge Cases
 def test_missing_rule_raises_value_error(limiter_sync, factory):
@@ -402,10 +401,9 @@ def test_missing_rule_raises_value_error(limiter_sync, factory):
         view(request)
 
 def test_invalid_limiter_type():
-    # Cannot mix async limiter with sync view (raises TypeError)
     storage = AsyncMemoryStorage()
     rules = [LimitRule(name="test", algorithm="fixed_window", limit=10, window=60)]
-    limiter = AsyncRateLimiter(storage, rules)  # async
+    limiter = AsyncRateLimiter(storage, rules)
     with pytest.raises(TypeError, match="Sync view requires a sync"):
         @rate_limit(limiter, "test", key_extractor=ip_extractor)
         def sync_view(request):
@@ -429,7 +427,7 @@ def test_anonymous_user_fallback(limiter_sync, factory):
         is_authenticated = False
     request = factory.get("/")
     request.user = AnonUser()
-    # All anonymous requests share the same key "anonymous"
+    # All anonymous requests share the same key "anon"
     assert view(request).status_code == 200
     assert view(request).status_code == 200
     assert view(request).status_code == 429

@@ -31,7 +31,6 @@ class TestAsyncRateLimitDecorator:
     @pytest.mark.asyncio
     async def test_named_rule_with_key_extractor(self):
         limiter = create_async_limiter()
-        # Add a rule manually
         resolver = limiter.rule_resolver
         if isinstance(resolver, AsyncRuleResolver):
             await resolver.add_rule(LimitRule(name="test", algorithm="fixed_window", limit=2, window=10))
@@ -44,13 +43,11 @@ class TestAsyncRateLimitDecorator:
         assert await func("a") == "ok"
         with pytest.raises(RateLimitExceeded):
             await func("a")
-        # Different key still allowed
         assert await func("b") == "ok"
 
     @pytest.mark.asyncio
     async def test_inline_rule_with_arg_extractor(self):
-        limiter = create_async_limiter()  # mutable resolver
-        # key_extractor uses keyword argument 'uid'
+        limiter = create_async_limiter()
         @rate_limit(limiter, limit_str="3/5s", key_extractor=arg_extractor("uid"))
         async def func(uid: str):
             return "ok"
@@ -59,7 +56,6 @@ class TestAsyncRateLimitDecorator:
             assert await func(uid="x") == "ok"
         with pytest.raises(RateLimitExceeded):
             await func(uid="x")
-        # Different uid allowed
         assert await func(uid="y") == "ok"
 
     @pytest.mark.asyncio
@@ -129,7 +125,7 @@ class TestAsyncRateLimitDecorator:
         assert await func1() == 1
         with pytest.raises(RateLimitExceeded):
             await func1()
-        # func2 has its own rule (different name) so still allowed
+            
         assert await func2() == 2
         assert await func2() == 2
         with pytest.raises(RateLimitExceeded):

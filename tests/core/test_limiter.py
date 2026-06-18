@@ -69,7 +69,6 @@ class TestRateLimiterAsync:
 
         result = await limiter.check("key", "test_rule")
 
-        # Verify storage call
         assert storage.calls == [
             ("sliding_window", {"key": f"{rule.name}:key", "limit": 5, "window": 60, "now": BASE_TIME})
         ]
@@ -80,7 +79,7 @@ class TestRateLimiterAsync:
     @pytest.mark.asyncio
     async def test_unknown_rule_raises_value_error(self):
         storage = AsyncSpyStorage()
-        limiter = AsyncRateLimiter(storage, [])  # type: ignore[arg-type]
+        limiter = AsyncRateLimiter(storage, [])  # type: ignore
 
         with pytest.raises(ValueError, match="Rule 'unknown' not found"):
             await limiter.check("key", "unknown")
@@ -90,7 +89,7 @@ class TestRateLimiterAsync:
         storage = AsyncSpyStorage()
         # Create a rule with an algorithm that is not in the registry
         rule = LimitRule.model_construct(name="bad", algorithm="unsupported", limit=10, window=60)
-        limiter = AsyncRateLimiter(storage, [rule])  # type: ignore[arg-type]
+        limiter = AsyncRateLimiter(storage, [rule])  # type: ignore
 
         with pytest.raises(ValueError, match="Unsupported algorithm 'unsupported'"):
             await limiter.check("key", "bad")

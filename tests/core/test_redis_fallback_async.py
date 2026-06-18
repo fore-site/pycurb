@@ -3,7 +3,7 @@ import redis.exceptions
 from pycurb.core.storage import AsyncMemoryStorage, AsyncRedisStorage
 from typing import Tuple
 
-# Helper: Failing Redis Client (async)
+# Helper: Failing Redis Client
 class FailingRedisClient:
     def __getattr__(self, name):
         async def failing(*args, **kwargs):
@@ -50,7 +50,6 @@ async def test_sliding_window_fallback_to_memory():
     method_name, args = spy.calls[0]
     assert method_name == "sliding_window"
     assert args == ("test_key", 60, 100, 12345.0)
-    # MemoryStorage starts empty: first request allowed
     assert result[0] is True
 
 @pytest.mark.asyncio
@@ -79,9 +78,8 @@ async def test_token_bucket_fallback_to_memory():
     method_name, args = spy.calls[0]
     assert method_name == "token_bucket"
     assert args == ("test_key", 10, 2.0, 12345.0)
-    # MemoryStorage token bucket starts full: first request allowed, remaining = capacity-1
     assert result[0] is True
-    assert result[1] == 9  # capacity=10, remaining after consuming = 9
+    assert result[1] == 9
 
 @pytest.mark.asyncio
 async def test_leaky_bucket_fallback_to_memory():
@@ -111,7 +109,7 @@ async def test_gcra_fallback_to_memory():
     assert args == ("test_key", 10, 2.0, 12345.0)
     
     assert result[0] is True
-    assert result[1] == 9  # capacity=10, remaining after consuming = 9
+    assert result[1] == 9
 
 
 # Tests without fallback storage: fail_open / fail_closed
