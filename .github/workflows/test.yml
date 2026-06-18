@@ -15,12 +15,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-    services:
-      redis:
-        image: redis:latest
-        ports:
-          - 6379:6379
-        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -42,6 +36,12 @@ jobs:
         run: |
           uv pip install --system -e .[all] --group dev
         shell: bash
+
+      - name: Start Redis (Linux only)
+        if runner.os == 'Linux':
+        run: |
+          docker run -d --name redis -p 6379:6379 redis
+          sleep 5
 
       - name: Run tests
         run: uv run pytest tests/ -v
