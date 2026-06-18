@@ -5,8 +5,6 @@
 
 **PyCurb** is a flexible, and easy‑to‑use rate‑limiting library for Python. It is desgined to be **framework‑agnostic**, i.e, used with FastAPI, Flask, Django, or even in plain scripts and CLI tools. It supports multiple algorithms, redis & in-memory storage backends, and has advanced features like composite (multi‑tier) limits, and dynamic rule updates.
 
---
-
 ## Algorithms
 
 PyCurb implements five industry‑standard rate‑limiting algorithms, each suited for different traffic patterns. Choose the one that best fits your use case.
@@ -89,8 +87,6 @@ The algorithm allows a request if `TAT ≤ now + τ`. After an allowed request, 
 `τ = (capacity - 1) * T` _(using `capacity-1` to match the burst size exactly)_  
 Allowed if `TAT ≤ now + τ`.  
 If allowed: `TAT = max(TAT, now) + T`.
-
----
 
 ### Comparison Table
 
