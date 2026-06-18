@@ -3,9 +3,9 @@
 [![CI](https://github.com/fore-site/pycurb/actions/workflows/test.yml/badge.svg)](https://github.com/fore-site/pycurb/actions)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
-**PyCurb** is a flexible, and easy‑to‑use rate‑limiting library for Python. It is desgined to be **framework‑agnostic** – used with FastAPI, Flask, Django, or even in plain scripts and CLI tools. It supports multiple algorithms, redis & in-memory storage backends, and has advanced features like composite (multi‑tier) limits, and dynamic rule updates.
+**PyCurb** is a flexible, and easy‑to‑use rate‑limiting library for Python. It is desgined to be **framework‑agnostic**, i.e, used with FastAPI, Flask, Django, or even in plain scripts and CLI tools. It supports multiple algorithms, redis & in-memory storage backends, and has advanced features like composite (multi‑tier) limits, and dynamic rule updates.
 
----
+--
 
 ## Algorithms
 
@@ -26,8 +26,6 @@ At `t=10s`, a request arrives; its timestamp is stored. At `t=75s`, the window c
 `count = |{ t ∈ timestamps : t > now - window }|`  
 Allowed if `count < limit`.
 
----
-
 ### 2. Fixed Window
 
 Fixed window divides time into consecutive, non‑overlapping windows of length `window`. All requests within the same window are counted together. The counter resets at the start of each new window.
@@ -44,8 +42,6 @@ At `t=10s`, the counter is in window `[0,60)`. At `t=75s`, a new window `[60,120
 `counter` is stored for the current `window_start`.  
 Allowed if `counter < limit`.
 
----
-
 ### 3. Token Bucket
 
 The token bucket algorithm maintains a **bucket of tokens** that refills at a constant rate. Each request consumes one token. If the bucket has at least one token, the request is allowed; otherwise, it is denied.
@@ -60,8 +56,6 @@ Initially, the bucket has `10` tokens. A client can send `10` requests immediate
 
 `tokens = min(capacity, tokens + (now - last_refill) * refill_rate)`  
 Allowed if `tokens >= 1`; then `tokens -= 1`.
-
----
 
 ### 4. Leaky Bucket
 
@@ -78,8 +72,6 @@ If `5` requests arrive at once, they fill the queue. They are then processed at 
 `leaked = floor((now - last_leak) * leak_rate)`  
 `queue = max(0, queue - leaked)`  
 Allowed if `queue < capacity`; then `queue += 1`.
-
----
 
 ### 5. GCRA – Generic Cell Rate Algorithm
 
@@ -150,25 +142,25 @@ import time
 from pycurb.core import AsyncRateLimiter, AsyncMemoryStorage, LimitRule
 ```
 
-#### 1. Define a rule: 5 requests per 10 seconds
+1. Define a rule: 5 requests per 10 seconds
 
 ```
 rule = LimitRule(
-name="api",
-algorithm="sliding_window",
-limit=5,
-window=10,
+    name="api",
+    algorithm="sliding_window",
+    limit=5,
+    window=10,
 )
 ```
 
-#### 2. Set up storage and limiter
+2. Set up storage and limiter
 
 ```
 storage = AsyncMemoryStorage()
 limiter = AsyncRateLimiter(storage, [rule])
 ```
 
-#### 3. Use it in your async function
+3. Use it in your async function
 
 ```
 async def fetch_data(user_id: str):
