@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -e .[all] --group dev
+          uv pip install -e .[all] --group dev
         shell: bash
 
       - name: Start Redis (Linux only)
