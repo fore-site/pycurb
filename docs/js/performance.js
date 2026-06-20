@@ -2,15 +2,11 @@
     function el(id){return document.getElementById(id)}
     function uniq(arr){return Array.from(new Set(arr))}
 
-    var DATA = {latency: [], throughput: []};
+    var DATA = {throughput: []};
 
     async function loadData(){
         try{
-            var [latRes, thrRes] = await Promise.all([
-                fetch('/data/latency.json'),
-                fetch('/data/throughput.json')
-            ]);
-            if (latRes.ok){ DATA.latency = await latRes.json(); }
+            var thrRes = await fetch('/data/throughput.json');
             if (thrRes.ok){ DATA.throughput = await thrRes.json(); }
         } catch(e){
             console.warn('Could not load performance data', e);
@@ -42,17 +38,6 @@
             var okLimit = (typeof limit === 'undefined' || limit==='ALL') || (Number(d.limit) === Number(limit));
             return okAlg && okStorage && okFill && okLimit;
         });
-    }
-
-    function groupLatencyByAlgorithm(data){
-        // returns {algo: {storage: mean_s}}
-        var out = {};
-        data.forEach(function(d){
-            var a=d.algorithm, s=d.storage, v=d.mean_s;
-            out[a] = out[a] || {};
-            out[a][s] = v;
-        });
-        return out;
     }
 
     function groupThroughputByAlgorithm(data){
@@ -93,19 +78,14 @@
         var fill = el('perf-fill') ? el('perf-fill').value : 'ALL';
         var limit = el('perf-limit') ? el('perf-limit').value : 'ALL';
 
-        var lat = filterData(DATA.latency, alg, storage, fill, limit);
         var thr = filterData(DATA.throughput, alg, storage, fill, limit);
-
-        var groupedLat = groupLatencyByAlgorithm(lat);
         var groupedThr = groupThroughputByAlgorithm(thr);
-
-        drawGroupedBar('latency-chart', groupedLat, 'Latency (mean seconds)', 'Seconds');
         drawGroupedBar('throughput-chart', groupedThr, 'Throughput (requests/sec)', 'Req/s');
     }
 
     function init(){
         loadData().then(function(data){
-            var combined = data.latency.concat(data.throughput);
+            var combined = data.throughput;
             var algs = uniq(combined.map(function(d){return d.algorithm})).sort();
             var storages = uniq(combined.map(function(d){return d.storage})).sort();
             var fills = uniq(combined.map(function(d){return d.fill_level})).sort(function(a,b){return a-b});

@@ -1,7 +1,4 @@
 <div>
-<h1>pycurb Performance</h1>
-
-## Latency
 
 Filter by algorithm and storage backend to update the chart.
 
@@ -14,10 +11,6 @@ Storage: <select id="perf-storage"></select>
 Fill level: <select id="perf-fill"></select>
 Limit: <select id="perf-limit"></select>
 </div>
-
-<div id="latency-chart" style="width:100%;height:500px;"></div>
-
-## Throughput
 
 <div id="throughput-chart" style="width:100%;height:500px;"></div>
 
