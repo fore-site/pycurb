@@ -30,7 +30,7 @@ dev = [
     "httpx2>=2.4.0",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
-    "pytest-benchmark>=5.2.3",
+    "pytest-benchmark[histogram]>=5.2.3",
     "pytest-django>=4.12.0",
 ]
 
