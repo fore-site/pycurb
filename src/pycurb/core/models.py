@@ -10,7 +10,6 @@ class LimitRule(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     name: str = Field(..., min_length=1, description="Short unique identifier for the rule.")
-    key_type: Literal["ip", "api_key", "user_id", "custom"] = Field(default="ip", description="Hint for adapters on how to extract client key.")
     algorithm: Literal["sliding_window", "fixed_window", "token_bucket", "leaky_bucket", "gcra"] = Field(..., description="Rate limit algorithm to use.")
     
     # Window algorithms require limit and window; token bucket can use them if capacity and refill_rate are not provided.
@@ -174,6 +173,7 @@ class RateLimitHeaders(BaseModel):
         )
 
 class RateLimitExceeded(Exception):
+    """Exception raised when rate limit has been exceeded."""
     def __init__(self, result: RateLimitResult):
         self.result = result
         retry_after = max(0, int(result.reset_at - time.time()))

@@ -46,6 +46,9 @@ def rate_limit(
         algorithm: Algorithm to use when creating a rule from limit_str.
         key_extractor: Function extracting key (unique identifier) from function arguments.
 
+    Raises:
+        RateLimitExceeded: If rate limit has been exceeded.
+        
     Exactly one of rule_name or limit_str must be provided.
     """
     if (rule_name is None) == (limit_str is None):

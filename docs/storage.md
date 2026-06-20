@@ -22,7 +22,7 @@ storage = MemoryStorage()
 
 - Implementation: [`RedisStorage`](api.md#pycurb.core.storage.redis.RedisStorage) and [`AsyncRedisStorage`](api.md#pycurb.core.storage.redis_async.AsyncRedisStorage).
 - Provides accurate, distributed counters using Lua scripts; recommended for multi-process production deployments.
-- Options: `key_prefix`, `use_redis_time` (use Redis server time for tighter clock skew tolerance), `fallback_storage` (fallback to another Storage instance), and `fail_open` (allow or deny requests on Redis errors).
+- Options: `key_prefix`, `use_redis_time` (use Redis server time for tighter clock skew tolerance. False by default), `fallback_storage` (fallback to another Storage instance.), and `fail_open` (allow or deny requests on Redis errors. Deny by default).
 
 Example (sync):
 
@@ -31,6 +31,30 @@ import redis
 from pycurb.core.storage import RedisStorage
 
 client = redis.Redis(host="localhost", port=6379)
+storage = RedisStorage(client, key_prefix="ratelimit:")
+```
+
+Example (Sync) with connection pool:
+
+```python
+import redis
+from pycurb.core.storage import RedisStorage
+
+_sync_redis_pool = None
+
+def get_redis_pool():
+    global _sync_redis_pool
+    if _sync_redis_pool is None:
+        _sync_redis_pool = redis.ConnectionPool(
+            host='localhost',
+            port=6379,
+            max_connections=10,
+            decode_responses=True,
+        )
+    return _sync_redis_pool
+
+pool = get_redis_pool()
+client = redis.Redis(connection_pool=pool)
 storage = RedisStorage(client, key_prefix="ratelimit:", use_redis_time=False, fail_open=False)
 ```
 
@@ -39,7 +63,15 @@ Example with fallback to memory on Redis errors:
 ```python
 from pycurb.core.storage import RedisStorage, MemoryStorage
 memory = MemoryStorage()
-redis_storage = RedisStorage(client, fallback_storage=memory, fail_open=True)
+redis_storage = RedisStorage(client, fallback_storage=memory)
+```
+
+Example with fail open on Redis errors:
+
+```python
+from pycurb.core.storage import RedisStorage, MemoryStorage
+memory = MemoryStorage()
+redis_storage = RedisStorage(client, fail_open=True)
 ```
 
 ## Best practices

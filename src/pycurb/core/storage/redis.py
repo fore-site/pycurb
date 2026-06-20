@@ -56,6 +56,7 @@ class RedisStorage(Storage):
                  fallback_storage: Optional[Storage] = None,
                  fail_open: bool = False
                  ) -> None:
+        
         self.redis = redis_client
         self.prefix = key_prefix
         self.use_redis_time = use_redis_time
