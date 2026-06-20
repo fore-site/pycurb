@@ -4,6 +4,7 @@ from pycurb.core import RateLimiter, AsyncRateLimiter
 from pycurb.core.models import RateLimitHeaders
 from .extractors import ip_extractor
 
+
 def create_rate_limit_middleware(
     limiter: Union[RateLimiter, AsyncRateLimiter],
     rule_name: str,
@@ -16,8 +17,9 @@ def create_rate_limit_middleware(
     (e.g., by using asyncio.run). For simplicity, use RateLimiter.
     """
     if isinstance(limiter, AsyncRateLimiter):
-
-        raise TypeError("Out-of-box Middleware only supports a sync limiter for now. Use RateLimiter.")
+        raise TypeError(
+            "Out-of-box Middleware only supports a sync limiter for now. Use RateLimiter."
+        )
 
     class RateLimitMiddleware:
         def __init__(self, get_response):

@@ -1,13 +1,16 @@
 import pytest
 from pycurb.core import (
-    RateLimiter, AsyncRateLimiter,
-    RuleResolver, AsyncRuleResolver,
-    LimitRule
+    RateLimiter,
+    AsyncRateLimiter,
+    RuleResolver,
+    AsyncRuleResolver,
+    LimitRule,
 )
 from pycurb.core.storage import MemoryStorage, AsyncMemoryStorage
 
+
 # Helpers
-def create_async_limiter(rules = None, resolver = None):
+def create_async_limiter(rules=None, resolver=None):
     storage = AsyncMemoryStorage()
     if rules is None and resolver is None:
         return AsyncRateLimiter(storage)
@@ -15,7 +18,8 @@ def create_async_limiter(rules = None, resolver = None):
         return AsyncRateLimiter(storage, rules=rules)
     return AsyncRateLimiter(storage, resolver=resolver)
 
-def create_sync_limiter(rules =  None, resolver = None):
+
+def create_sync_limiter(rules=None, resolver=None):
     storage = MemoryStorage()
     if rules is None and resolver is None:
         return RateLimiter(storage)
@@ -23,14 +27,16 @@ def create_sync_limiter(rules =  None, resolver = None):
         return RateLimiter(storage, rules=rules)
     return RateLimiter(storage, resolver=resolver)
 
+
 # Async Tests
+
 
 class TestAsyncManualUsage:
     @pytest.mark.asyncio
     async def test_static_rule_list(self):
         rule = LimitRule(name="test", algorithm="fixed_window", limit=2, window=10)
         limiter = create_async_limiter(rules=[rule])
-        
+
         # Check within limit
         result = await limiter.check("key1", "test")
         assert result.allowed is True
@@ -52,7 +58,7 @@ class TestAsyncManualUsage:
         limiter = create_async_limiter(resolver=resolver)
         rule = LimitRule(name="test", algorithm="sliding_window", limit=3, window=10)
         await resolver.add_rule(rule)
-        
+
         for i in range(3):
             result = await limiter.check("key", "test")
             assert result.allowed is True
@@ -61,7 +67,9 @@ class TestAsyncManualUsage:
         assert result.allowed is False
 
         # Replace rule with higher limit
-        new_rule = LimitRule(name="test", algorithm="sliding_window", limit=5, window=10)
+        new_rule = LimitRule(
+            name="test", algorithm="sliding_window", limit=5, window=10
+        )
         await resolver.add_rule(new_rule)
         result = await limiter.check("key", "test")
         assert result.allowed is True
@@ -70,11 +78,11 @@ class TestAsyncManualUsage:
     async def test_remove_rule(self):
         limiter = create_async_limiter()
         rule = LimitRule(name="temp", algorithm="fixed_window", limit=1, window=10)
-        
+
         await limiter.add_rule(rule)
         result = await limiter.check("key", "temp")
         assert result.allowed is True
-        
+
         await limiter.remove_rule("temp")
         with pytest.raises(ValueError, match="Rule 'temp' not found"):
             await limiter.check("key", "temp")
@@ -101,7 +109,9 @@ class TestAsyncManualUsage:
 
     @pytest.mark.asyncio
     async def test_static_resolver_function(self):
-        rules = [LimitRule(name="api", algorithm="token_bucket", capacity=5, refill_rate=1)]
+        rules = [
+            LimitRule(name="api", algorithm="token_bucket", capacity=5, refill_rate=1)
+        ]
         resolver = AsyncRuleResolver(rules)
         limiter = create_async_limiter(resolver=resolver)
         for i in range(5):
@@ -159,7 +169,9 @@ class TestAsyncManualUsage:
         result = await limiter.check("bob", "test")
         assert result.allowed is True
 
+
 # Sync Tests
+
 
 class TestSyncManualUsage:
     def test_static_rule_list(self):
@@ -195,7 +207,9 @@ class TestSyncManualUsage:
         assert result.allowed is False
 
     def test_static_resolver_function(self):
-        rules = [LimitRule(name="api", algorithm="token_bucket", capacity=2, refill_rate=1)]
+        rules = [
+            LimitRule(name="api", algorithm="token_bucket", capacity=2, refill_rate=1)
+        ]
         resolver = RuleResolver(rules)
         limiter = create_sync_limiter(resolver=resolver)
         result = limiter.check("key", "api")

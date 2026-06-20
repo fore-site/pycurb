@@ -3,16 +3,13 @@ from pydantic import ValidationError
 from pycurb.core.models import LimitRule, RateLimitResult, RateLimitHeaders
 import time
 
+
 class TestLimitRule:
     """Test the LimitRule configuration model."""
 
     def test_valid_sliding_window(self):
         rule = LimitRule(
-            name="test",
-            algorithm="sliding_window",
-            limit=100,
-            window=60,
-            key_type="ip"
+            name="test", algorithm="sliding_window", limit=100, window=60, key_type="ip"
         )
         assert rule.name == "test"
         assert rule.algorithm == "sliding_window"
@@ -24,20 +21,12 @@ class TestLimitRule:
         assert rule.leak_rate is None
 
     def test_valid_fixed_window(self):
-        rule = LimitRule(
-            name="fixed",
-            algorithm="fixed_window",
-            limit=50,
-            window=120
-        )
+        rule = LimitRule(name="fixed", algorithm="fixed_window", limit=50, window=120)
         assert rule.algorithm == "fixed_window"
 
     def test_valid_token_bucket_with_capacity_refill(self):
         rule = LimitRule(
-            name="tb",
-            algorithm="token_bucket",
-            capacity=200,
-            refill_rate=10.0
+            name="tb", algorithm="token_bucket", capacity=200, refill_rate=10.0
         )
         assert rule.capacity == 200
         assert rule.refill_rate == 10.0
@@ -47,10 +36,7 @@ class TestLimitRule:
 
     def test_valid_token_bucket_with_limit_window_fallback(self):
         rule = LimitRule(
-            name="tb_fallback",
-            algorithm="token_bucket",
-            limit=100,
-            window=60
+            name="tb_fallback", algorithm="token_bucket", limit=100, window=60
         )
         # capacity and refill_rate are derived, but not stored
         assert rule.limit == 100
@@ -61,10 +47,7 @@ class TestLimitRule:
     def test_valid_token_bucket_mixed(self):
         # provide capacity but use window for refill_rate
         rule = LimitRule(
-            name="mixed",
-            algorithm="token_bucket",
-            capacity=500,
-            window=10
+            name="mixed", algorithm="token_bucket", capacity=500, window=10
         )
         assert rule.capacity == 500
         assert rule.window == 10
@@ -72,20 +55,14 @@ class TestLimitRule:
 
     def test_valid_leaky_bucket(self):
         rule = LimitRule(
-            name="leaky",
-            algorithm="leaky_bucket",
-            capacity=100,
-            leak_rate=5.0
+            name="leaky", algorithm="leaky_bucket", capacity=100, leak_rate=5.0
         )
         assert rule.capacity == 100
         assert rule.leak_rate == 5.0
 
     def test_leaky_bucket_fallback_limit(self):
         rule = LimitRule(
-            name="leaky_limit",
-            algorithm="leaky_bucket",
-            limit=200,
-            leak_rate=10.0
+            name="leaky_limit", algorithm="leaky_bucket", limit=200, leak_rate=10.0
         )
         assert rule.limit == 200
         assert rule.leak_rate == 10.0
@@ -139,7 +116,7 @@ class TestLimitRule:
             algorithm="fixed_window",
             limit=10,
             window=1,
-            metadata={"priority": "high", "tier": 3}
+            metadata={"priority": "high", "tier": 3},
         )
         assert rule.metadata["priority"] == "high"
 
@@ -149,22 +126,12 @@ class TestLimitRule:
             rule.limit = 20  # frozen=True prevents mutation
 
     def test_valid_gcra_with_capacity_refill(self):
-        rule = LimitRule(
-            name="gcra1",
-            algorithm="gcra",
-            capacity=100,
-            refill_rate=5.0
-        )
+        rule = LimitRule(name="gcra1", algorithm="gcra", capacity=100, refill_rate=5.0)
         assert rule.capacity == 100
         assert rule.refill_rate == 5.0
 
     def test_valid_gcra_with_limit_refill(self):
-        rule = LimitRule(
-            name="gcra2",
-            algorithm="gcra",
-            limit=200,
-            refill_rate=10.0
-        )
+        rule = LimitRule(name="gcra2", algorithm="gcra", limit=200, refill_rate=10.0)
         assert rule.limit == 200
         assert rule.refill_rate == 10.0
 
@@ -186,21 +153,14 @@ class TestLimitRule:
 class TestRateLimitResult:
     def test_valid_allowed(self):
         result = RateLimitResult(
-            allowed=True,
-            remaining=99,
-            reset_at=1734567890.5,
-            limit=100
+            allowed=True, remaining=99, reset_at=1734567890.5, limit=100
         )
         assert result.allowed is True
         assert result.remaining == 99
 
     def test_valid_denied_with_retry_after(self):
         result = RateLimitResult(
-            allowed=False,
-            remaining=0,
-            reset_at=1734567890.5,
-            limit=100,
-            retry_after=42
+            allowed=False, remaining=0, reset_at=1734567890.5, limit=100, retry_after=42
         )
         assert result.retry_after == 42
 
@@ -224,16 +184,15 @@ class TestRateLimitHeaders:
         assert "Retry-After" not in d
 
     def test_to_dict_with_retry_after(self):
-        headers = RateLimitHeaders(limit=100, remaining=0, reset=1234567890, retry_after=30)
+        headers = RateLimitHeaders(
+            limit=100, remaining=0, reset=1234567890, retry_after=30
+        )
         d = headers.to_dict()
         assert d["Retry-After"] == "30"
 
     def test_from_result_with_allowed(self):
         result = RateLimitResult(
-            allowed=True,
-            remaining=80,
-            reset_at=1734567890.5,
-            limit=100
+            allowed=True, remaining=80, reset_at=1734567890.5, limit=100
         )
         headers = RateLimitHeaders.from_result(result)
         assert headers.limit == 100
@@ -246,7 +205,7 @@ class TestRateLimitHeaders:
             allowed=False,
             remaining=0,
             reset_at=time.time() + 30,  # 30 seconds from now
-            limit=100
+            limit=100,
         )
         headers = RateLimitHeaders.from_result(result)
         # retry_after should be computed as ~30
@@ -259,18 +218,13 @@ class TestRateLimitHeaders:
             remaining=0,
             reset_at=time.time() + 30,
             limit=100,
-            retry_after=15  # explicit overrides computed
+            retry_after=15,  # explicit overrides computed
         )
         headers = RateLimitHeaders.from_result(result)
         assert headers.retry_after == 15
 
     def test_from_result_now_override(self):
-        result = RateLimitResult(
-            allowed=False,
-            remaining=0,
-            reset_at=1000,
-            limit=100
-        )
+        result = RateLimitResult(allowed=False, remaining=0, reset_at=1000, limit=100)
         # Provide a fixed "now" timestamp
         headers = RateLimitHeaders.from_result(result, now=950)
         assert headers.retry_after == 50  # 1000 - 950

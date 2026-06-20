@@ -32,6 +32,7 @@ class AsyncSpyStorage:
         self.calls.append(("gcra", kwargs))
         return self.response
 
+
 class SyncSpyStorage:
     def __init__(self, response=(True, 4, RESET_AT)):
         self.response = response
@@ -52,7 +53,7 @@ class SyncSpyStorage:
     def leaky_bucket(self, **kwargs):
         self.calls.append(("leaky_bucket", kwargs))
         return self.response
-    
+
     def gcra(self, **kwargs):
         self.calls.append(("gcra", kwargs))
         return self.response
@@ -64,13 +65,18 @@ class TestRateLimiterAsync:
         # Mock time
         monkeypatch.setattr(sw_module.time, "time", lambda: BASE_TIME)
         storage = AsyncSpyStorage(response=(True, 4, RESET_AT))
-        rule = LimitRule(name="test_rule", algorithm="sliding_window", limit=5, window=60)
+        rule = LimitRule(
+            name="test_rule", algorithm="sliding_window", limit=5, window=60
+        )
         limiter = AsyncRateLimiter(storage, [rule])  # type: ignore[arg-type]
 
         result = await limiter.check("key", "test_rule")
 
         assert storage.calls == [
-            ("sliding_window", {"key": f"{rule.name}:key", "limit": 5, "window": 60, "now": BASE_TIME})
+            (
+                "sliding_window",
+                {"key": f"{rule.name}:key", "limit": 5, "window": 60, "now": BASE_TIME},
+            )
         ]
         assert result.allowed is True
         assert result.remaining == 4
@@ -88,23 +94,31 @@ class TestRateLimiterAsync:
     async def test_unsupported_algorithm_raises_value_error(self):
         storage = AsyncSpyStorage()
         # Create a rule with an algorithm that is not in the registry
-        rule = LimitRule.model_construct(name="bad", algorithm="unsupported", limit=10, window=60)
+        rule = LimitRule.model_construct(
+            name="bad", algorithm="unsupported", limit=10, window=60
+        )
         limiter = AsyncRateLimiter(storage, [rule])  # type: ignore
 
         with pytest.raises(ValueError, match="Unsupported algorithm 'unsupported'"):
             await limiter.check("key", "bad")
 
+
 class TestRateLimiter:
     def test_check_uses_correct_algorithm_and_rule(self, monkeypatch):
         monkeypatch.setattr(sw_module.time, "time", lambda: BASE_TIME)
         storage = SyncSpyStorage(response=(True, 4, RESET_AT))
-        rule = LimitRule(name="test_rule_sync", algorithm="sliding_window", limit=5, window=60)
+        rule = LimitRule(
+            name="test_rule_sync", algorithm="sliding_window", limit=5, window=60
+        )
         limiter = RateLimiter(storage, [rule])  # type: ignore[arg-type]
 
         result = limiter.check("key", "test_rule_sync")
 
         assert storage.calls == [
-            ("sliding_window", {"key": f"{rule.name}:key", "limit": 5, "window": 60, "now": BASE_TIME})
+            (
+                "sliding_window",
+                {"key": f"{rule.name}:key", "limit": 5, "window": 60, "now": BASE_TIME},
+            )
         ]
         assert result.allowed is True
         assert result.remaining == 4
@@ -118,7 +132,9 @@ class TestRateLimiter:
 
     def test_unsupported_algorithm_raises_value_error(self):
         storage = SyncSpyStorage()
-        rule = LimitRule.model_construct(name="bad", algorithm="unsupported", limit=10, window=60)
+        rule = LimitRule.model_construct(
+            name="bad", algorithm="unsupported", limit=10, window=60
+        )
         limiter = RateLimiter(storage, [rule])  # type: ignore[arg-type]
 
         with pytest.raises(ValueError, match="Unsupported algorithm 'unsupported'"):

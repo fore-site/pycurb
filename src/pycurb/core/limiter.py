@@ -8,17 +8,19 @@ from .algorithms import (
     FixedWindowAlgorithm,
     TokenBucketAlgorithm,
     LeakyBucketAlgorithm,
-    GcraAlgorithm
+    GcraAlgorithm,
 )
+
 
 class RateLimiter:
     """Core rate limiter engine."""
 
-    def __init__(self, 
-                 storage: Storage, 
-                 rules: Optional[List[LimitRule]] = None,
-                 resolver: Optional[Callable[[str], LimitRule]] = None
-        ):
+    def __init__(
+        self,
+        storage: Storage,
+        rules: Optional[List[LimitRule]] = None,
+        resolver: Optional[Callable[[str], LimitRule]] = None,
+    ):
         """
         Initialize the rate limiter
 
@@ -35,14 +37,14 @@ class RateLimiter:
         if resolver is not None:
             self.rule_resolver = resolver
         else:
-            self.rule_resolver = RuleResolver(rules or [])            
+            self.rule_resolver = RuleResolver(rules or [])
 
         self.algorithms: Dict[str, RateLimiterAlgorithm] = {
             "sliding_window": SlidingWindowAlgorithm(),
             "fixed_window": FixedWindowAlgorithm(),
             "token_bucket": TokenBucketAlgorithm(),
             "leaky_bucket": LeakyBucketAlgorithm(),
-            "gcra": GcraAlgorithm()
+            "gcra": GcraAlgorithm(),
         }
 
     @classmethod
@@ -51,15 +53,15 @@ class RateLimiter:
 
     def add_rule(self, rule: LimitRule) -> None:
         """Add or replace a rule"""
-        if not hasattr(self.rule_resolver, 'add_rule'):
+        if not hasattr(self.rule_resolver, "add_rule"):
             raise TypeError("The rule resolver does not support dynamic rule addition")
-        self.rule_resolver.add_rule(rule)     # type: ignore
-    
+        self.rule_resolver.add_rule(rule)  # type: ignore
+
     def remove_rule(self, name: str) -> None:
         """Remove a rule by name"""
         if not hasattr(self.rule_resolver, "remove_rule"):
             raise TypeError("The rule resolver does not support dynamic rule removal")
-        self.rule_resolver.remove_rule(name)      # type: ignore
+        self.rule_resolver.remove_rule(name)  # type: ignore
 
     def check(self, key: str, rule_names: Union[str, List[str]]) -> RateLimitResult:
         """
@@ -75,7 +77,7 @@ class RateLimiter:
         Raises:
             ValueError: If the rule name(s) is unknown or algorithm is not supported.
         """
-        
+
         if isinstance(rule_names, str):
             return self._check_single(key, rule_names)
         results = []
@@ -85,7 +87,7 @@ class RateLimiter:
                 return res
             results.append(res)
 
-        return min(results, key=lambda r : (r.remaining, r.reset_at))
+        return min(results, key=lambda r: (r.remaining, r.reset_at))
 
     def _check_single(self, key: str, rule_name: str) -> RateLimitResult:
         """
@@ -106,5 +108,7 @@ class RateLimiter:
             raise ValueError(f"Rule '{rule_name}' not found")
         algo = self.algorithms.get(rule.algorithm)
         if algo is None:
-            raise ValueError(f"Unsupported algorithm '{rule.algorithm}' for rule '{rule_name}'")
+            raise ValueError(
+                f"Unsupported algorithm '{rule.algorithm}' for rule '{rule_name}'"
+            )
         return algo.check(key, rule, self.storage)

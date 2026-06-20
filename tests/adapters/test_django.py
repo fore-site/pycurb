@@ -1,5 +1,11 @@
 import pytest
-from pycurb.core import RateLimiter, AsyncRateLimiter, MemoryStorage, AsyncMemoryStorage, LimitRule
+from pycurb.core import (
+    RateLimiter,
+    AsyncRateLimiter,
+    MemoryStorage,
+    AsyncMemoryStorage,
+    LimitRule,
+)
 from pycurb.adapters.django import (
     rate_limit,
     create_rate_limit_middleware,
@@ -15,11 +21,11 @@ from django.conf import settings
 if not settings.configured:
     settings.configure(
         DEBUG=True,
-        SECRET_KEY='test-secret-key',
+        SECRET_KEY="test-secret-key",
         INSTALLED_APPS=[],
         MIDDLEWARE=[],
         ROOT_URLCONF=__name__,
-        DEFAULT_CHARSET='utf-8',
+        DEFAULT_CHARSET="utf-8",
     )
     django.setup()
 
@@ -27,6 +33,7 @@ from django.test import RequestFactory, Client
 from django.http import JsonResponse
 
 # Fixtures
+
 
 @pytest.fixture
 def limiter_sync():
@@ -42,6 +49,7 @@ def limiter_sync():
     ]
     return RateLimiter(storage, rules)
 
+
 @pytest.fixture
 def limiter_async():
     storage = AsyncMemoryStorage()
@@ -50,17 +58,21 @@ def limiter_async():
     ]
     return AsyncRateLimiter(storage, rules)
 
+
 @pytest.fixture
 def factory():
     return RequestFactory()
+
 
 @pytest.fixture
 def client():
     return Client()
 
+
 # Helper to create middleware class from limiter
 def get_middleware_class(limiter, rule_name, key_extractor=ip_extractor):
     return create_rate_limit_middleware(limiter, rule_name, key_extractor)
+
 
 # Tests for Decorator (sync views)
 class TestSyncDecorator:
@@ -187,7 +199,12 @@ class TestSyncDecorator:
         def custom_limit_response(request, result):
             return JsonResponse({"custom": "limited"}, status=429)
 
-        @rate_limit(limiter_sync, "strict", key_extractor=ip_extractor, on_limit=custom_limit_response)
+        @rate_limit(
+            limiter_sync,
+            "strict",
+            key_extractor=ip_extractor,
+            on_limit=custom_limit_response,
+        )
         def view(request):
             return JsonResponse({"ok": True})
 
@@ -206,6 +223,7 @@ class TestSyncDecorator:
         class User1:
             is_authenticated = True
             pk = 1
+
         class User2:
             is_authenticated = True
             pk = 2
@@ -222,6 +240,7 @@ class TestSyncDecorator:
 
         # User2: fresh, still allowed
         assert view(request2).status_code == 200
+
 
 # Tests for Async Decorator
 class TestAsyncDecorator:
@@ -242,8 +261,10 @@ class TestAsyncDecorator:
     @pytest.mark.asyncio
     async def test_async_view_with_composite(self, limiter_async):
         storage = AsyncMemoryStorage()
-        rules = [LimitRule(name="a", algorithm="fixed_window", limit=1, window=10),
-                 LimitRule(name="b", algorithm="fixed_window", limit=2, window=10)]
+        rules = [
+            LimitRule(name="a", algorithm="fixed_window", limit=1, window=10),
+            LimitRule(name="b", algorithm="fixed_window", limit=2, window=10),
+        ]
         limiter = AsyncRateLimiter(storage, rules)
 
         @rate_limit(limiter, ["a", "b"], key_extractor=ip_extractor)
@@ -258,11 +279,14 @@ class TestAsyncDecorator:
         response = await view(request)
         assert response.status_code == 429
 
+
 # Tests for Middleware (Global)
 class TestMiddleware:
     def test_middleware_allows_within_limit(self, limiter_sync, client):
         # Create middleware class
-        Middleware = get_middleware_class(limiter_sync, "global", key_extractor=ip_extractor)
+        Middleware = get_middleware_class(
+            limiter_sync, "global", key_extractor=ip_extractor
+        )
 
         # Apply middleware to a simple Django view
         def dummy_view(request):
@@ -289,11 +313,16 @@ class TestMiddleware:
         assert "Retry-After" in response.headers
 
     def test_middleware_with_custom_key_extractor(self, limiter_sync, client):
-        Middleware = get_middleware_class(limiter_sync, "global", key_extractor=api_key_extractor)
+        Middleware = get_middleware_class(
+            limiter_sync, "global", key_extractor=api_key_extractor
+        )
+
         def dummy_view(request):
             return JsonResponse({"ok": True})
+
         def get_response(request):
             return dummy_view(request)
+
         middleware = Middleware(get_response)
         factory = RequestFactory()
         # First request with key1 allowed
@@ -314,11 +343,16 @@ class TestMiddleware:
         assert response.status_code == 200
 
     def test_middleware_returns_429_with_headers(self, limiter_sync, client):
-        Middleware = get_middleware_class(limiter_sync, "strict", key_extractor=ip_extractor)
+        Middleware = get_middleware_class(
+            limiter_sync, "strict", key_extractor=ip_extractor
+        )
+
         def dummy_view(request):
             return JsonResponse({"ok": True})
+
         def get_response(request):
             return dummy_view(request)
+
         middleware = Middleware(get_response)
         factory = RequestFactory()
         request = factory.get("/")
@@ -333,25 +367,31 @@ class TestMiddleware:
         assert "X-RateLimit-Reset" in response.headers
 
     def test_middleware_with_user_id_extractor(self, limiter_sync):
-        Middleware = get_middleware_class(limiter_sync, "global", key_extractor=user_id_extractor)
+        Middleware = get_middleware_class(
+            limiter_sync, "global", key_extractor=user_id_extractor
+        )
+
         def dummy_view(request):
             return JsonResponse({"ok": True})
+
         def get_response(request):
             return dummy_view(request)
+
         middleware = Middleware(get_response)
         factory = RequestFactory()
 
         class User1:
             is_authenticated = True
             pk = 1
+
         class User2:
             is_authenticated = True
             pk = 2
 
         request1 = factory.get("/")
-        request1.user = User1() # type: ignore
+        request1.user = User1()  # type: ignore
         request2 = factory.get("/")
-        request2.user = User2() # type: ignore
+        request2.user = User2()  # type: ignore
 
         # User1: limit=2
         assert middleware(request1).status_code == 200
@@ -360,6 +400,7 @@ class TestMiddleware:
 
         # User2: still allowed
         assert middleware(request2).status_code == 200
+
 
 class TestExtractors:
     def test_ip_extractor_returns_ip(self, factory):
@@ -373,6 +414,7 @@ class TestExtractors:
         class MockUser:
             is_authenticated = True
             pk = 123
+
         request = factory.get("/")
         request.user = MockUser()
         assert user_id_extractor(request) == "123"
@@ -380,6 +422,7 @@ class TestExtractors:
     def test_user_id_extractor_anonymous(self, factory):
         class MockUser:
             is_authenticated = False
+
         request = factory.get("/")
         request.user = MockUser()
         assert user_id_extractor(request) == "anon"
@@ -389,6 +432,7 @@ class TestExtractors:
         assert api_key_extractor(request) == "secret-key"
         request = factory.get("/", HTTP_AUTHORIZATION="Bearer token")
         assert api_key_extractor(request) == ""
+
 
 # Edge Cases
 def test_missing_rule_raises_value_error(limiter_sync, factory):
@@ -400,23 +444,29 @@ def test_missing_rule_raises_value_error(limiter_sync, factory):
     with pytest.raises(ValueError, match="Rule 'missing' not found"):
         view(request)
 
+
 def test_invalid_limiter_type():
     storage = AsyncMemoryStorage()
     rules = [LimitRule(name="test", algorithm="fixed_window", limit=10, window=60)]
     limiter = AsyncRateLimiter(storage, rules)
     with pytest.raises(TypeError, match="Sync view requires a sync"):
+
         @rate_limit(limiter, "test", key_extractor=ip_extractor)
         def sync_view(request):
             return JsonResponse({"ok": True})
+
 
 def test_async_limiter_with_async_view_works(limiter_async, factory):
     @rate_limit(limiter_async, "async_test", key_extractor=ip_extractor)
     async def view(request):
         return JsonResponse({"ok": True})
+
     request = factory.get("/")
     import asyncio
+
     response = asyncio.run(view(request))
     assert response.status_code == 200
+
 
 def test_anonymous_user_fallback(limiter_sync, factory):
     @rate_limit(limiter_sync, "global", key_extractor=user_id_extractor)
@@ -425,12 +475,14 @@ def test_anonymous_user_fallback(limiter_sync, factory):
 
     class AnonUser:
         is_authenticated = False
+
     request = factory.get("/")
     request.user = AnonUser()
     # All anonymous requests share the same key "anon"
     assert view(request).status_code == 200
     assert view(request).status_code == 200
     assert view(request).status_code == 429
+
 
 def test_composite_with_user_extractor(limiter_sync, factory):
     @rate_limit(limiter_sync, ["global", "strict"], key_extractor=user_id_extractor)
@@ -440,15 +492,18 @@ def test_composite_with_user_extractor(limiter_sync, factory):
     class User1:
         is_authenticated = True
         pk = 1
+
     request = factory.get("/")
     request.user = User1()
     # strict limit=1 => first allowed, second denied
     assert view(request).status_code == 200
     assert view(request).status_code == 429
+
     # different user => allowed
     class User2:
         is_authenticated = True
         pk = 2
+
     request2 = factory.get("/")
     request2.user = User2()
     assert view(request2).status_code == 200

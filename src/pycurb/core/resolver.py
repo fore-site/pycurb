@@ -4,8 +4,10 @@ from abc import ABC, abstractmethod
 import asyncio
 import threading
 
+
 class BaseRuleResolver(ABC):
     """Base interface for resolvers."""
+
     @abstractmethod
     def __call__(self, name: str) -> LimitRule:
         """Resolve a rule by name."""
@@ -13,10 +15,14 @@ class BaseRuleResolver(ABC):
 
     def add_rule(self, rule: LimitRule) -> None:
         """Optional: add a rule dynamically. Override if supported."""
-        raise NotImplementedError("This resolver does not support dynamic rule addition.")
+        raise NotImplementedError(
+            "This resolver does not support dynamic rule addition."
+        )
+
 
 class AsyncBaseRuleResolver(ABC):
     """Base interface for asynchronous resolvers."""
+
     @abstractmethod
     async def __call__(self, name: str) -> LimitRule:
         """Resolve a rule by name."""
@@ -24,7 +30,9 @@ class AsyncBaseRuleResolver(ABC):
 
     async def add_rule(self, rule: LimitRule) -> None:
         """Optional: add a rule dynamically. Override if supported."""
-        raise NotImplementedError("This resolver does not support dynamic rule addition.")
+        raise NotImplementedError(
+            "This resolver does not support dynamic rule addition."
+        )
 
 
 class AsyncRuleResolver(AsyncBaseRuleResolver):

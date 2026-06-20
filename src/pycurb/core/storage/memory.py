@@ -4,6 +4,7 @@ from typing import Dict, Deque, Tuple
 from .base import Storage
 import math
 
+
 class MemoryStorage(Storage):
     """In-memory storage for rate limiting."""
 
@@ -14,7 +15,7 @@ class MemoryStorage(Storage):
         self._leaky: Dict[str, Tuple[int, float]] = {}
         self._gcra: Dict[str, float] = {}
         self._key_locks: Dict[str, threading.Lock] = {}
-        self._global_lock= threading.Lock()
+        self._global_lock = threading.Lock()
 
     def get_lock(self, key: str) -> threading.Lock:
         """Get or create a lock for the given key."""
@@ -25,7 +26,9 @@ class MemoryStorage(Storage):
                 self._key_locks[key] = threading.Lock()
         return self._key_locks[key]
 
-    def sliding_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
+    def sliding_window(
+        self, key: str, window: int, limit: int, now: float
+    ) -> Tuple[bool, int, float]:
         lock = self.get_lock(key)
         with lock:
             q = self._sliding.setdefault(key, deque())
@@ -38,17 +41,21 @@ class MemoryStorage(Storage):
                 remaining = limit - len(q)
                 reset_at = q[0] + window if q else now + window
                 return True, remaining, reset_at
-            
+
             else:
                 reset_at = q[0] + window
                 return False, 0, reset_at
-            
-    def fixed_window(self, key: str, window: int, limit: int, now: float) -> Tuple[bool, int, float]:
+
+    def fixed_window(
+        self, key: str, window: int, limit: int, now: float
+    ) -> Tuple[bool, int, float]:
         lock = self.get_lock(key)
         with lock:
             computed_window_start = math.floor(now / window) * window
 
-            count, stored_window_start = self._fixed.get(key, (0, computed_window_start))
+            count, stored_window_start = self._fixed.get(
+                key, (0, computed_window_start)
+            )
 
             if stored_window_start < computed_window_start:
                 count = 0
@@ -60,19 +67,21 @@ class MemoryStorage(Storage):
                 remaining = limit - count
                 reset_at = stored_window_start + window
                 return True, remaining, reset_at
-            
+
             else:
                 reset_at = stored_window_start + window
                 return False, 0, reset_at
-            
-    def token_bucket(self, key: str, capacity: int, refill_rate: float, now: float) -> Tuple[bool, int, float]:
+
+    def token_bucket(
+        self, key: str, capacity: int, refill_rate: float, now: float
+    ) -> Tuple[bool, int, float]:
         lock = self.get_lock(key)
         with lock:
             tokens, last_refill_time = self._token.get(key, (float(capacity), now))
 
             time_elapsed = now - last_refill_time
             tokens_during_elapsed = time_elapsed * refill_rate
-            
+
             new_tokens = min(tokens + tokens_during_elapsed, float(capacity))
 
             if new_tokens >= 1:
@@ -81,12 +90,14 @@ class MemoryStorage(Storage):
                 remaining = int(new_tokens)
                 reset_at = now + (capacity - new_tokens) / refill_rate
                 return True, remaining, reset_at
-            
+
             else:
                 reset_at = now + (1 - new_tokens) / refill_rate
                 return False, 0, reset_at
-            
-    def leaky_bucket(self, key: str, capacity: int, leak_rate: float, now: float) -> Tuple[bool, int, float]:
+
+    def leaky_bucket(
+        self, key: str, capacity: int, leak_rate: float, now: float
+    ) -> Tuple[bool, int, float]:
         lock = self.get_lock(key)
         with lock:
             queue_size, last_leak_time = self._leaky.get(key, (0, now))
@@ -105,18 +116,20 @@ class MemoryStorage(Storage):
                 remaining = capacity - new_queue
                 reset_at = now + (1 / leak_rate)
                 return True, remaining, reset_at
-            
+
             else:
                 return False, 0, now + (1 / leak_rate)
 
-    def gcra(self, key: str, capacity: int, rate: float, now: float) -> Tuple[bool, int, float]:
+    def gcra(
+        self, key: str, capacity: int, rate: float, now: float
+    ) -> Tuple[bool, int, float]:
         lock = self.get_lock(key)
         with lock:
             tat = self._gcra.get(key, now)  # default first request
 
             interval = 1.0 / rate
             # Use (capacity - 1) so 'capacity' exactly equals max burst size
-            burst_interval = (capacity - 1) * interval 
+            burst_interval = (capacity - 1) * interval
 
             # Allowed if TAT is within allowed burst window
             allowed = tat <= now + burst_interval

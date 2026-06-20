@@ -14,7 +14,7 @@ limiter = RateLimiter(storage=storage, rules=rules)
 
 ## Create a storage and limiter (Async example)
 
-Using [`AsyncMemoryStorage`](api.md#pycurb.core.storage.memory.AsyncMemoryStorage), [`AsyncRateLimiter`](api.md#pycurb.core.limiter.AsyncRateLimiter) and [`LimitRule`](api.md#pycurb.core.models.LimitRule).
+Using [`AsyncMemoryStorage`](api.md#pycurb.core.storage.memory_async.AsyncMemoryStorage), [`AsyncRateLimiter`](api.md#pycurb.core.limiter_async.AsyncRateLimiter) and [`LimitRule`](api.md#pycurb.core.models.LimitRule).
 
 ```python
 from pycurb.core import AsyncMemoryStorage, AsyncRateLimiter, LimitRule

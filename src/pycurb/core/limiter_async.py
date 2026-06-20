@@ -9,28 +9,29 @@ from .algorithms import (
     AsyncFixedWindowAlgorithm,
     AsyncTokenBucketAlgorithm,
     AsyncLeakyBucketAlgorithm,
-    AsyncGcraAlgorithm
+    AsyncGcraAlgorithm,
 )
+
 
 class AsyncRateLimiter:
     """Async core rate limiter engine"""
 
     def __init__(
-            self, 
-            storage: AsyncStorage, 
-            rules: Optional[List[LimitRule]] = None,
-            resolver: Optional[Callable[[str], LimitRule]] = None
-        ):
+        self,
+        storage: AsyncStorage,
+        rules: Optional[List[LimitRule]] = None,
+        resolver: Optional[Callable[[str], LimitRule]] = None,
+    ):
         """
         Initialize the rate limiter
 
         Args:
             storage: A storage backend (e.g MemoryStorage, RedisStorage)
-            rules: A list of LimitRule objects 
+            rules: A list of LimitRule objects
             resolver: A rule resolver instance.
         """
         if rules is not None and resolver is not None:
-            raise ValueError("Provide either 'rules' or 'resolver'. Not both.") 
+            raise ValueError("Provide either 'rules' or 'resolver'. Not both.")
         self.storage = storage
 
         if resolver is not None:
@@ -43,26 +44,30 @@ class AsyncRateLimiter:
             "fixed_window": AsyncFixedWindowAlgorithm(),
             "token_bucket": AsyncTokenBucketAlgorithm(),
             "leaky_bucket": AsyncLeakyBucketAlgorithm(),
-            "gcra": AsyncGcraAlgorithm()
+            "gcra": AsyncGcraAlgorithm(),
         }
 
     @classmethod
-    async def from_resolver(cls, storage: AsyncStorage, resolver: Callable[[str], LimitRule]):
+    async def from_resolver(
+        cls, storage: AsyncStorage, resolver: Callable[[str], LimitRule]
+    ):
         return cls(storage, resolver=resolver)
 
     async def add_rule(self, rule: LimitRule) -> None:
         """Add or replace a rule"""
-        if not hasattr(self.rule_resolver, 'add_rule'):
+        if not hasattr(self.rule_resolver, "add_rule"):
             raise TypeError("The rule resolver does not support dynamic rule addition")
-        await self.rule_resolver.add_rule(rule)     # type: ignore
-    
+        await self.rule_resolver.add_rule(rule)  # type: ignore
+
     async def remove_rule(self, name: str) -> None:
         """Remove a rule by name"""
         if not hasattr(self.rule_resolver, "remove_rule"):
             raise TypeError("The rule resolver does not support dynamic rule removal")
-        await self.rule_resolver.remove_rule(name)      # type: ignore
+        await self.rule_resolver.remove_rule(name)  # type: ignore
 
-    async def check(self, key: str, rule_names: Union[str, List[str]]) -> RateLimitResult:
+    async def check(
+        self, key: str, rule_names: Union[str, List[str]]
+    ) -> RateLimitResult:
         """
         Check if a request with the given key is allowed under the named rule(s).
 
@@ -76,7 +81,7 @@ class AsyncRateLimiter:
         Raises:
             ValueError: If the rule name(s) is unknown or algorithm is not supported.
         """
-        
+
         if isinstance(rule_names, str):
             return await self._check_single(key, rule_names)
         results = []
@@ -86,7 +91,7 @@ class AsyncRateLimiter:
                 return res
             results.append(res)
 
-        return min(results, key=lambda r : (r.remaining, r.reset_at))
+        return min(results, key=lambda r: (r.remaining, r.reset_at))
 
     async def _check_single(self, key: str, rule_name: str) -> RateLimitResult:
         """
@@ -106,11 +111,13 @@ class AsyncRateLimiter:
         rule_is_async = inspect.iscoroutine(rule)
         if rule is None:
             raise ValueError(f"Rule '{rule_name}' not found.")
-        
+
         if rule_is_async:
             rule = await rule
 
         algorithm = self.algorithms.get(rule.algorithm)
         if algorithm is None:
-            raise ValueError(f"Unsupported algorithm '{rule.algorithm}' for rule '{rule_name}'")
+            raise ValueError(
+                f"Unsupported algorithm '{rule.algorithm}' for rule '{rule_name}'"
+            )
         return await algorithm.check(key=key, rule=rule, storage=self.storage)

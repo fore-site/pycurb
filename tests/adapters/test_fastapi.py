@@ -12,6 +12,7 @@ import time
 
 # Fixtures
 
+
 @pytest.fixture
 def limiter():
     storage = AsyncMemoryStorage()
@@ -25,6 +26,7 @@ def limiter():
         LimitRule(name="gcra", algorithm="gcra", capacity=4, refill_rate=2.0),
     ]
     return AsyncRateLimiter(storage, rules)
+
 
 @pytest.fixture
 def app(limiter):
@@ -45,80 +47,97 @@ def app(limiter):
     # Endpoint with per‑endpoint rule (strict)
     @app.get("/strict")
     async def strict_endpoint(
-        _=Depends(rate_limiter(limiter, "strict", key_extractor=api_key_extractor))
+        _=Depends(rate_limiter(limiter, "strict", key_extractor=api_key_extractor)),
     ):
         return {"ok": True}
 
     # Endpoint with composite rules (global + strict)
     @app.get("/composite")
     async def composite_endpoint(
-        _=Depends(rate_limiter(limiter, ["global", "strict"], key_extractor=ip_extractor))
+        _=Depends(
+            rate_limiter(limiter, ["global", "strict"], key_extractor=ip_extractor)
+        ),
     ):
         return {"ok": True}
 
     # Endpoint with token bucket rule (burst)
     @app.get("/burst")
     async def burst_endpoint(
-        _=Depends(rate_limiter(limiter, "burst", key_extractor=ip_extractor))
+        _=Depends(rate_limiter(limiter, "burst", key_extractor=ip_extractor)),
     ):
         return {"ok": True}
 
     return app
+
 
 @pytest.fixture
 def burst_app(limiter):
     app = FastAPI()
-    
+
     @app.get("/burst")
     async def burst_endpoint(
-        _=Depends(rate_limiter(limiter, "burst", key_extractor=ip_extractor))
+        _=Depends(rate_limiter(limiter, "burst", key_extractor=ip_extractor)),
     ):
         return {"ok": True}
+
     return app
+
 
 @pytest.fixture
 def sliding_app(limiter):
     app = FastAPI()
+
     # sliding rule: limit=5, window=10
     @app.get("/sliding")
     async def sliding_endpoint(
-        _=Depends(rate_limiter(limiter, "sliding", key_extractor=ip_extractor))
+        _=Depends(rate_limiter(limiter, "sliding", key_extractor=ip_extractor)),
     ):
         return {"ok": True}
+
     return app
+
 
 @pytest.fixture
 def fixed_app(limiter):
     app = FastAPI()
+
     # fixed rule: limit=3, window=10
     @app.get("/fixed")
     async def fixed_endpoint(
-        _=Depends(rate_limiter(limiter, "fixed", key_extractor=ip_extractor))
+        _=Depends(rate_limiter(limiter, "fixed", key_extractor=ip_extractor)),
     ):
         return {"ok": True}
+
     return app
+
 
 @pytest.fixture
 def leaky_app(limiter):
     app = FastAPI()
+
     # leaky rule: capacity=2, leak_rate=1.0
     @app.get("/leaky")
     async def leaky_endpoint(
-        _=Depends(rate_limiter(limiter, "leaky", key_extractor=ip_extractor))
+        _=Depends(rate_limiter(limiter, "leaky", key_extractor=ip_extractor)),
     ):
         return {"ok": True}
+
     return app
+
 
 @pytest.fixture
 def gcra_app(limiter):
     app = FastAPI()
+
     # GCRA rule: capacity=4, refill_rate=2.0
     @app.get("/gcra")
     async def gcra_endpoint(
-        _=Depends(rate_limiter(limiter, "gcra", key_extractor=ip_extractor))
+        _=Depends(rate_limiter(limiter, "gcra", key_extractor=ip_extractor)),
     ):
         return {"ok": True}
+
     return app
+
 
 # Tests
 def test_middleware_allows_requests():
@@ -141,6 +160,7 @@ def test_middleware_allows_requests():
     resp = client.get("/")
     assert resp.status_code == 429
     assert "Retry-After" in resp.headers
+
 
 class TestMiddleware:
     def test_allows_requests_within_limit(self, app):
@@ -188,6 +208,7 @@ class TestMiddleware:
         for _ in range(10):
             assert client.get("/health").status_code == 200
 
+
 class TestDependency:
     def test_per_endpoint_rule_allows_within_limit(self, app):
         client = TestClient(app)
@@ -206,6 +227,7 @@ class TestDependency:
         assert resp1.status_code == 200
         resp2 = client.get("/strict", headers={"X-API-Key": "key2"})
         assert resp2.status_code == 200  # different key, still allowed
+
 
 class TestCompositeRules:
     def test_composite_allows_only_if_all_rules_allow(self, app):
@@ -233,12 +255,12 @@ class TestTokenBucket:
         resp = client.get("/burst")
         assert resp.status_code == 429
         assert "Retry-After" in resp.headers  # dependency adds Retry-After
-        
+
         # Wait for refill (at least 1 second)
         time.sleep(1.1)
         resp = client.get("/burst")
         assert resp.status_code == 200
-       
+
 
 class TestSlidingWindow:
     def test_sliding_allows_within_limit(self, sliding_app):
@@ -259,6 +281,7 @@ class TestSlidingWindow:
         resp = client.get("/sliding")
         assert resp.status_code == 429
 
+
 class TestFixedWindow:
     def test_fixed_allows_within_limit(self, fixed_app):
         client = TestClient(fixed_app)
@@ -268,6 +291,7 @@ class TestFixedWindow:
         resp = client.get("/fixed")
         assert resp.status_code == 429
         assert "Retry-After" in resp.headers
+
 
 class TestLeakyBucket:
     def test_leaky_allows_within_capacity(self, leaky_app):
@@ -290,6 +314,7 @@ class TestLeakyBucket:
         assert resp.status_code == 429
         # Wait for leak (1 second)
         import time
+
         time.sleep(1.1)
         resp = client.get("/leaky")
         assert resp.status_code == 200
@@ -313,18 +338,24 @@ class TestGCRA:
             client.get("/gcra")
         # Wait for refill (0.5 seconds for one token)
         import time
+
         time.sleep(0.6)
         resp = client.get("/gcra")
         assert resp.status_code == 200
 
+
 class TestCompositeWithDifferentAlgorithms:
     def test_composite_sliding_and_token(self, limiter):
         app = FastAPI()
+
         @app.get("/composite-mixed")
         async def mixed_endpoint(
-            _=Depends(rate_limiter(limiter, ["sliding", "burst"], key_extractor=ip_extractor))
+            _=Depends(
+                rate_limiter(limiter, ["sliding", "burst"], key_extractor=ip_extractor)
+            ),
         ):
             return {"ok": True}
+
         client = TestClient(app)
         # sliding limit=5, burst limit=3 → the stricter is burst (3)
         for i in range(3):
@@ -334,15 +365,21 @@ class TestCompositeWithDifferentAlgorithms:
         assert resp.status_code == 429
         assert "Retry-After" in resp.headers
 
+
 # Edge Cases
+
 
 def test_missing_rule_raises_500():
     storage = AsyncMemoryStorage()
     limiter = AsyncRateLimiter(storage, [])  # no rules
     app = FastAPI()
+
     @app.get("/bad")
-    async def bad(_=Depends(rate_limiter(limiter, "missing", key_extractor=ip_extractor))):
+    async def bad(
+        _=Depends(rate_limiter(limiter, "missing", key_extractor=ip_extractor)),
+    ):
         return {"ok": True}
+
     client = TestClient(app)
     with pytest.raises(Exception):  # ValueError from resolver
         client.get("/bad")

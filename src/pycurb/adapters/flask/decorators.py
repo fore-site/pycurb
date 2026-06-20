@@ -5,16 +5,18 @@ from pycurb.core import RateLimiter
 from pycurb.core.models import RateLimitHeaders
 from .extractors import ip_extractor
 
+
 def rate_limit(
-        limiter: RateLimiter, 
-        rule_name: Union[str, List[str]], 
-        key_extractor: Callable[..., str] = ip_extractor, 
-        on_limit: Optional[Callable] = None
-        ):
+    limiter: RateLimiter,
+    rule_name: Union[str, List[str]],
+    key_extractor: Callable[..., str] = ip_extractor,
+    on_limit: Optional[Callable] = None,
+):
     """
     Flask view decorator for rate limiting.
     Works with sync views.
     """
+
     def decorator(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
@@ -36,5 +38,7 @@ def rate_limit(
             for name, value in headers.to_dict().items():
                 resp.headers[name] = value
             return resp
+
         return wrapper
+
     return decorator

@@ -8,7 +8,7 @@ pycurb ships with in-memory and Redis-backed storage implementations (sync and a
 
 ## MemoryStorage
 
-- Implementation: [`MemoryStorage`](api.md#pycurb.core.storage.memory.MemoryStorage) and [`AsyncMemoryStorage`](api.md#pycurb.core.storage.memory.AsyncMemoryStorage)— fast, local, non-persistent.
+- Implementation: [`MemoryStorage`](api.md#pycurb.core.storage.memory.MemoryStorage) and [`AsyncMemoryStorage`](api.md#pycurb.core.storage.memory_async.AsyncMemoryStorage)— fast, local, non-persistent.
 - Use for development, single-process deployments, or when persistence is unnecessary.
 
 Example:

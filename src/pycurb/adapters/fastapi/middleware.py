@@ -7,11 +7,13 @@ from pycurb.core import AsyncRateLimiter
 from pycurb.core.models import RateLimitHeaders
 from .extractors import ip_extractor
 
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
     ASGI middleware to apply a global rate limit rule to all requests.
     Optionally exclude certain paths.
     """
+
     def __init__(
         self,
         app: ASGIApp,

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
 
+
 class Storage(ABC):
     """Abstract storage backend for rate limiter counters."""
 
@@ -93,15 +94,15 @@ class Storage(ABC):
             - reset_at: Timestamp when the next request can be processed (if full).
         """
         pass
-    
+
     @abstractmethod
     def gcra(
-            self, key: str, capacity: int, rate: float, now: float
+        self, key: str, capacity: int, rate: float, now: float
     ) -> Tuple[bool, int, float]:
         """
         Process a request through Generic Cell Rate Algorithm.
         It enforces a steady request rate with a defined burst limit.
-        
+
         Args:
             key: Unique identifier.
             capacity: Maximum burst size (number of requests that can be sent immediately).

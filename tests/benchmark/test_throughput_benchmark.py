@@ -2,11 +2,15 @@ import pytest
 import asyncio
 import concurrent.futures
 import time
+import os
+import json
 import redis
 import redis.asyncio as aioredis
 from pycurb.core import (
-    RateLimiter, AsyncRateLimiter,
-    MemoryStorage, AsyncMemoryStorage,
+    RateLimiter,
+    AsyncRateLimiter,
+    MemoryStorage,
+    AsyncMemoryStorage,
     LimitRule,
 )
 from pycurb.core.storage.redis import RedisStorage
@@ -15,46 +19,62 @@ from pycurb.core.storage.redis_async import AsyncRedisStorage
 
 _sync_redis_pool = None
 _async_redis_pool = None
+THROUGHPUT_RESULTS = []
 
 # Create a single event loop for the test suite
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
+
 
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_redis_pools():
     yield
     # After all tests, close the pools
     global _async_redis_pool, _sync_redis_pool
-    if '_async_redis_pool' in globals() and _async_redis_pool:
+    if "_async_redis_pool" in globals() and _async_redis_pool:
         loop.run_until_complete(_async_redis_pool.disconnect())
-    if '_sync_redis_pool' in globals() and _sync_redis_pool:
+    if "_sync_redis_pool" in globals() and _sync_redis_pool:
         _sync_redis_pool.disconnect()
+    # write aggregated throughput results to docs/data/throughput.json
+    try:
+        out_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "docs", "data")
+        )
+        os.makedirs(out_dir, exist_ok=True)
+        out_file = os.path.join(out_dir, "throughput.json")
+        with open(out_file, "w") as fh:
+            json.dump(THROUGHPUT_RESULTS, fh)
+    except Exception:
+        pass
     loop.close()
+
 
 # Helpers
 def is_redis_available():
     try:
-        r = redis.Redis(host='localhost', port=6379)
+        r = redis.Redis(host="localhost", port=6379)
         return r.ping()
     except:
         return False
+
 
 def get_sync_redis_pool():
     global _sync_redis_pool
     if _sync_redis_pool is None:
         _sync_redis_pool = redis.ConnectionPool(
-            host='localhost',
+            host="localhost",
             port=6379,
             max_connections=CONCURRENCY + 10,
             decode_responses=True,
         )
     return _sync_redis_pool
 
+
 def get_async_redis_pool():
     global _async_redis_pool
     if _async_redis_pool is None:
         _async_redis_pool = aioredis.ConnectionPool(
-            host='localhost',
+            host="localhost",
             port=6379,
             max_connections=CONCURRENCY + 10,
             decode_responses=True,
@@ -67,13 +87,23 @@ def create_rule(algorithm, limit):
     if algorithm in ("sliding_window", "fixed_window"):
         return LimitRule(name="bench", algorithm=algorithm, limit=limit, window=60)
     elif algorithm == "token_bucket":
-        return LimitRule(name="bench", algorithm="token_bucket", capacity=limit, refill_rate=limit/60)
+        return LimitRule(
+            name="bench",
+            algorithm="token_bucket",
+            capacity=limit,
+            refill_rate=limit / 60,
+        )
     elif algorithm == "leaky_bucket":
-        return LimitRule(name="bench", algorithm="leaky_bucket", capacity=limit, leak_rate=limit/60)
+        return LimitRule(
+            name="bench", algorithm="leaky_bucket", capacity=limit, leak_rate=limit / 60
+        )
     elif algorithm == "gcra":
-        return LimitRule(name="bench", algorithm="gcra", capacity=limit, refill_rate=limit/60)
+        return LimitRule(
+            name="bench", algorithm="gcra", capacity=limit, refill_rate=limit / 60
+        )
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
+
 
 def create_storage(storage_type):
     """Create a storage instance and its corresponding limiter class."""
@@ -92,6 +122,7 @@ def create_storage(storage_type):
     else:
         raise ValueError(f"Unknown storage type: {storage_type}")
 
+
 async def prefill_limiter(limiter, key, rule_name, target):
     """Send `target` requests to reach fill level."""
     if target <= 0:
@@ -99,21 +130,25 @@ async def prefill_limiter(limiter, key, rule_name, target):
     for _ in range(target):
         await limiter.check(key, rule_name)
 
+
 def prefill_limiter_sync(limiter, key, rule_name, target):
     if target <= 0:
         return
     for _ in range(target):
         limiter.check(key, rule_name)
 
+
 async def async_delete_redis_key(storage, key):
     """Delete the Redis key for async storage."""
-    if hasattr(storage, 'redis') and hasattr(storage.redis, 'delete'):
+    if hasattr(storage, "redis") and hasattr(storage.redis, "delete"):
         await storage.redis.delete(key)
+
 
 def sync_delete_redis_key(storage, key):
     """Delete the Redis key for sync storage."""
-    if hasattr(storage, 'redis') and hasattr(storage.redis, 'delete'):
+    if hasattr(storage, "redis") and hasattr(storage.redis, "delete"):
         storage.redis.delete(key)
+
 
 # Benchmark Configuration
 ALGORITHMS = ["sliding_window", "fixed_window", "token_bucket", "leaky_bucket", "gcra"]
@@ -124,6 +159,7 @@ CONCURRENCY = 100
 TOTAL_REQUESTS = 1000
 LIMIT_VALUES = [100, 500, 1000]
 FILL_LEVELS = [0.0, 0.5, 0.95]
+
 
 # Benchmark Test
 @pytest.mark.benchmark
@@ -149,7 +185,7 @@ def test_rate_limit_benchmark(benchmark, algorithm, storage_type, limit, fill_le
     limiter = limiter_class(storage, [rule])
 
     # Unique key for each benchmark run
-    key = f"bench_{algorithm}_{storage_type}_{CONCURRENCY}_{limit}_{int(fill_level*100)}_{time.time_ns()}"
+    key = f"bench_{algorithm}_{storage_type}_{CONCURRENCY}_{limit}_{int(fill_level * 100)}_{time.time_ns()}"
     rule_name = "bench"
 
     # Prefill to fill_level
@@ -172,20 +208,69 @@ def test_rate_limit_benchmark(benchmark, algorithm, storage_type, limit, fill_le
             tasks = [limited_check() for _ in range(TOTAL_REQUESTS)]
             return await asyncio.gather(*tasks)
 
-        # benchmark the async function
-        result = benchmark(lambda: loop.run_until_complete(run_checks()))
+        # run the full batch once and measure elapsed time to compute throughput
+        start = time.perf_counter()
+        loop.run_until_complete(run_checks())
+        elapsed = time.perf_counter() - start
+        throughput = TOTAL_REQUESTS / elapsed if elapsed > 0 else float("inf")
+        print(
+            f"THROUGHPUT: algorithm={algorithm} storage={storage_type} limit={limit} fill={fill_level} -> {throughput:.2f} req/s (elapsed={elapsed:.4f}s)"
+        )
+        # record summary in aggregated results list
+        try:
+            summary = {
+                "metric": "throughput",
+                "algorithm": algorithm,
+                "storage": storage_type,
+                "limit": limit,
+                "fill_level": fill_level,
+                "total_requests": TOTAL_REQUESTS,
+                "concurrency": CONCURRENCY,
+                "elapsed_s": elapsed,
+                "throughput_rps": throughput,
+                "timestamp": int(time.time()),
+            }
+            THROUGHPUT_RESULTS.append(summary)
+        except Exception:
+            pass
     else:
+
         def sync_check():
             return limiter.check(key, rule_name)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
+
             def sync_bench():
                 futures = [executor.submit(sync_check) for _ in range(TOTAL_REQUESTS)]
                 return [f.result() for f in futures]
 
-            result = benchmark(sync_bench)
+            # run the full batch once and measure elapsed time to compute throughput
+            start = time.perf_counter()
+            sync_bench()
+            elapsed = time.perf_counter() - start
+            throughput = TOTAL_REQUESTS / elapsed if elapsed > 0 else float("inf")
+            print(
+                f"THROUGHPUT: algorithm={algorithm} storage={storage_type} limit={limit} fill={fill_level} -> {throughput:.2f} req/s (elapsed={elapsed:.4f}s)"
+            )
+            # record summary in aggregated results list
+            try:
+                summary = {
+                    "metric": "throughput",
+                    "algorithm": algorithm,
+                    "storage": storage_type,
+                    "limit": limit,
+                    "fill_level": fill_level,
+                    "total_requests": TOTAL_REQUESTS,
+                    "concurrency": CONCURRENCY,
+                    "elapsed_s": elapsed,
+                    "throughput_rps": throughput,
+                    "timestamp": int(time.time()),
+                }
+                THROUGHPUT_RESULTS.append(summary)
+            except Exception:
+                pass
 
-        # Clean up Redis keys if needed
+    # Clean up Redis keys if needed
     if "redis" in storage_type:
         if is_async:
             loop.run_until_complete(async_delete_redis_key(storage, key))

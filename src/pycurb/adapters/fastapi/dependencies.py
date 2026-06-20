@@ -4,6 +4,7 @@ from pycurb.core import AsyncRateLimiter, RateLimitResult
 from .extractors import ip_extractor
 import time
 
+
 def rate_limiter(
     limiter: AsyncRateLimiter,
     rule_name: Union[str, List[str]],
@@ -12,6 +13,7 @@ def rate_limiter(
     """
     Factory that creates a FastAPI dependency for rate limiting.
     """
+
     async def dependency(request: Request) -> RateLimitResult:
         key = key_extractor(request)
         result = await limiter.check(key, rule_name)
@@ -24,4 +26,5 @@ def rate_limiter(
             )
         request.state.rate_limit_result = result
         return result
+
     return dependency

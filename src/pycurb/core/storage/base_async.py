@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
 
+
 class AsyncStorage(ABC):
     """Abstract storage backend for rate limiter counters. Asynchronous version (WSGI compatible)"""
 
@@ -96,12 +97,12 @@ class AsyncStorage(ABC):
 
     @abstractmethod
     async def gcra(
-            self, key: str, capacity: int, rate: float, now: float
+        self, key: str, capacity: int, rate: float, now: float
     ) -> Tuple[bool, int, float]:
         """
         Process a request through Generic Cell Rate Algorithm.
         It enforces a steady request rate with a defined burst limit.
-        
+
         Args:
             key: Unique identifier.
             capacity: Maximum burst size (number of requests that can be sent immediately).

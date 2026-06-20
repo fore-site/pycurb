@@ -45,7 +45,7 @@ jobs:
           sleep 5
 
       - name: Run tests
-        run: uv run pytest tests/ -v
+        run: uv run pytest --ignore=tests/benchmark/ -v
         env:
           REDIS_HOST: localhost
 

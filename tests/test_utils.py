@@ -1,6 +1,7 @@
 import pytest
 from pycurb.utils import parse_duration, parse_rate_limit_string
 
+
 class TestParseDuration:
     def test_seconds(self):
         assert parse_duration("30s") == 30

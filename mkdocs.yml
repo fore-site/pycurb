@@ -38,6 +38,10 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/fore-site/pycurb
 
+extra_javascript:
+  - https://cdn.plot.ly/plotly-2.20.0.min.js
+  - js/performance.js
+
 plugins:
   - search
   - git-revision-date-localized
