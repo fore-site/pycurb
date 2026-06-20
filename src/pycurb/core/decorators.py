@@ -16,6 +16,7 @@ def arg_extractor(*arg_names: str) -> Callable[..., str]:
 
     Example:
         @rate_limit(limiter, rule_name="api", key_extractor=arg_extractor("user_id", "tenant"))
+
         async def get_data(user_id: int, tenant: str):
             ...
     """
@@ -44,7 +45,6 @@ def rate_limit(
         limit_str: Shorthand string (e.g., "100/s") to create a new rule.
         algorithm: Algorithm to use when creating a rule from limit_str.
         key_extractor: Function extracting key (unique identifier) from function arguments.
-        raise_on_limit: If True, raises RateLimitExceeded when limit exceeded.
 
     Exactly one of rule_name or limit_str must be provided.
     """

@@ -49,17 +49,28 @@ def parse_rate_limit_string(rate_str: str) -> Tuple[int, int]:
     """
     Parse a shorthand rate limit string into (limit, window_seconds).
 
-    Supported formats:
-        "100/s"        -> limit=100, window=1
-        "100/30s"      -> limit=100, window=30
-        "5/m"          -> limit=5, window=60
-        "5/2m"         -> limit=5, window=120
-        "10/h"         -> limit=10, window=3600
-        "10/2h"        -> limit=10, window=7200
-        "2/d"          -> limit=2, window=86400
-        "2/2d"         -> limit=2, window=172800
-        "100"          -> limit=100, window=1
-        "100/60"       -> limit=100, window=60
+    Supported formats (examples):
+
+    - Single number (per-second): ``100`` -> limit=100, window=1
+    - Per-unit shorthand: ``100/s`` -> limit=100, window=1
+    - Explicit duration with unit: ``100/30s`` -> limit=100, window=30
+    - Numeric window without unit: ``100/60`` -> limit=100, window=60
+    - Larger units: ``5/m`` -> limit=5, window=60; ``10/h`` -> limit=10, window=3600
+
+    Examples::
+
+        ```
+        100/s
+        100/30s
+        5/m
+        5/2m
+        10/h
+        10/2h
+        2/d
+        2/2d
+        100
+        100/60
+        ```
 
     Raises:
         ValueError: if format is invalid.
@@ -68,8 +79,6 @@ def parse_rate_limit_string(rate_str: str) -> Tuple[int, int]:
     if not rate_str:
         raise ValueError("Empty rate limit string")
 
-    # Pattern: digits (limit), optional '/', then optional digits (window) and optional unit
-    # Groups: (limit, maybe window_number, maybe unit)
     match = re.match(r'^(\d+)(?:/(\d*)([smhd]?))?$', rate_str)
     if not match:
         raise ValueError(f"Invalid rate limit format: '{rate_str}'")

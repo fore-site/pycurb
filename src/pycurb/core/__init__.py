@@ -3,7 +3,7 @@ from .limiter_async import AsyncRateLimiter
 from .limiter import RateLimiter
 from .resolver import RuleResolver, AsyncRuleResolver
 from .decorators import rate_limit, arg_extractor
-from .storage import MemoryStorage, AsyncMemoryStorage
+from .storage import MemoryStorage, AsyncMemoryStorage, RedisStorage, AsyncRedisStorage
 
 
 __all__ = [
@@ -16,6 +16,8 @@ __all__ = [
     "AsyncRuleResolver",
     "MemoryStorage",
     "AsyncMemoryStorage",
+    "RedisStorage",
+    "AsyncRedisStorage",
     "rate_limit",
     "RateLimitExceeded",
     "arg_extractor",

@@ -122,6 +122,7 @@ if is_redis_available():
     STORAGE_TYPES.extend(["async_redis", "sync_redis"])
 CONCURRENCY = 100
 TOTAL_REQUESTS = 1000
+NUM_USERS = 100
 LIMIT_VALUES = [100, 500, 1000]
 FILL_LEVELS = [0.0, 0.5, 0.95]
 
@@ -148,46 +149,49 @@ def test_rate_limit_benchmark(benchmark, algorithm, storage_type, limit, fill_le
     rule = create_rule(algorithm, limit)
     limiter = limiter_class(storage, [rule])
 
-    # Unique key for each benchmark run
-    key = f"bench_{algorithm}_{storage_type}_{CONCURRENCY}_{limit}_{int(fill_level*100)}_{time.time_ns()}"
+    # Key for each virtual user
+    keys = [f"vu_{i}_{algorithm}_{storage_type}" for i in range(NUM_USERS)]
     rule_name = "bench"
 
     # Prefill to fill_level
     target = int(limit * fill_level)
 
     if is_async:
-        loop.run_until_complete(prefill_limiter(limiter, key, rule_name, target))
+        for key in keys:
+            loop.run_until_complete(prefill_limiter(limiter, key, rule_name, target))
     else:
-        prefill_limiter_sync(limiter, key, rule_name, target)
+        for key in keys:
+            prefill_limiter_sync(limiter, key, rule_name, target)
 
     # Define the concurrent check function
     if is_async:
         sem = asyncio.Semaphore(CONCURRENCY)
 
-        async def limited_check():
+        async def limited_check(k):
             async with sem:
-                return await limiter.check(key, rule_name)
+                return await limiter.check(key=k, rule_names=rule_name)
 
         async def run_checks():
-            tasks = [limited_check() for _ in range(TOTAL_REQUESTS)]
+            tasks = [limited_check(k) for k in keys]
             return await asyncio.gather(*tasks)
 
         # benchmark the async function
         result = benchmark(lambda: loop.run_until_complete(run_checks()))
     else:
-        def sync_check():
+        def sync_check(key):
             return limiter.check(key, rule_name)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(CONCURRENCY, NUM_USERS)) as executor:
             def sync_bench():
-                futures = [executor.submit(sync_check) for _ in range(TOTAL_REQUESTS)]
-                return [f.result() for f in futures]
+                return list(executor.map(sync_check, keys))
 
             result = benchmark(sync_bench)
 
     # Clean up Redis keys if needed
     if "redis" in storage_type:
         if is_async:
-            loop.run_until_complete(async_delete_redis_key(storage, key))
+            for key in keys:
+                loop.run_until_complete(async_delete_redis_key(storage, key))
         else:
-            sync_delete_redis_key(storage, key)
+            for key in keys:
+                sync_delete_redis_key(storage, key)
