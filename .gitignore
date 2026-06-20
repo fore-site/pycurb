@@ -220,6 +220,7 @@ __marimo__/
 # coding agents
 .agents/
 .codex/
+.github/agents
 
 # benchmark results
 .benchmarks/
