@@ -26,7 +26,7 @@ Each benchmark run measures throughput for a single execution of the workload:
 
 Notes:
 
-- This page shows a single measured throughput datapoint per run/configuration. The test does not average repeated runs automatically.
+- This page shows a single measured throughput datapoint per run/configuration.
 
 - The measured throughput includes scheduling and task-launch overhead (not only the storage/algorithm execution time), especially for the async implementation that enqueues many tasks then serializes execution via the semaphore.
 
