@@ -41,3 +41,52 @@ tb = LimitRule(name="api:token", algorithm="token_bucket", capacity=50, refill_r
 - Use `leaky_bucket` to smooth bursty producers into a steady outgoing rate.
 
 - Use `gcra` when you want strong pacing guarantees (works well for protecting downstream services that require evenly spread requests).
+
+## Algorithm Caveats
+
+### Fixed Window: Boundary Burst Vulnerability
+
+Fixed window allows up to limit requests in each aligned window. However, because the counter resets exactly at the window boundary, a client can send limit requests at the very end of one window and another limit requests at the very start of the next window — effectively achieving 2 \* limit requests in a very short time (e.g., within a few milliseconds).
+
+Example:
+
+    Limit = 100 requests per minute, windows aligned at 0s, 60s, 120s, …
+
+    At 59.999s, the client sends 100 requests (within the first window).
+
+    At 60.001s, the client sends another 100 requests (start of the next window).
+
+    Total = 200 requests in ~2 ms — double the intended limit.
+
+Mitigation:
+
+- Use sliding window if this burst behaviour is unacceptable for your use case.
+
+- Use token bucket if you need precise burst control with a configurable capacity.
+
+Fixed window is still a good choice for simple, low‑memory limiting where occasional boundary bursts are acceptable (e.g., internal rate limits, non‑critical APIs).
+
+### Leaky Bucket: Lazy Refill Implementation (No Background Timers)
+
+PyCurb implements the leaky bucket algorithm using a counter‑based, lazy refill approach. The bucket does not use a background timer or thread to drain requests. Instead, the queue size is recalculated on‑demand when a request arrives:
+
+```text
+
+queue = max(0, queue - (now - last_leak) * leak_rate)
+```
+
+This means:
+
+- No background processes — the algorithm is purely event‑driven and does not waste resources.
+
+- Fractional leaks are preserved — if only 0.6 of a request should have leaked, the fractional part is retained and applied to future calculations.
+
+- Accurate even under high‑frequency requests — the bucket will eventually leak as expected, without the “never leaks” bug that occurs in naive integer‑only implementations.
+
+Why this matters:
+
+- You do not need to run a separate timer or cron job to drain the bucket.
+
+- The algorithm is memory‑efficient (only stores a float for the current queue level and a timestamp).
+
+- The behaviour is identical to a traditional leaky bucket, but without the overhead of a background thread.

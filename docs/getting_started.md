@@ -32,11 +32,15 @@ if result.allowed:
 	# proceed
 else:
 	# handle limit exceeded
+	print(f"Retry after {result.retry_after} seconds.")
+
+print(result.remaining)
+# remaining requests/token in the current window/bucket
 ```
 
 ## Using the [`rate_limit`](api.md#pycurb.core.decorators.rate_limit) decorator with `rule_name`
 
-The unified `rate_limit` decorator can be applied over a function, accepting existing rule or list of rules to use. It raises a [RateLimitExceeded](api.md#pycurb.core.models.RateLimitExceeded) if rate limit has been exceeded.
+The unified [`@rate_limit`](api.md#pycurb.core.decorators.rate_limit) decorator can be applied over a function, accepting existing rule or list of rules to use. It raises a [RateLimitExceeded](api.md#pycurb.core.models.RateLimitExceeded) if rate limit has been exceeded.
 
 Example (Sync):
 
@@ -62,7 +66,7 @@ def data(user_id: str):
 
 ## Using the [`rate_limit`](api.md#pycurb.core.decorators.rate_limit) decorator with shorthand `limit_str`
 
-The unified `rate_limit` decorator also supports creating a rule lazily from a shorthand string like `"100/m"` (100 per minute). See [parse_rate_limit_string](api.md#pycurb.utils.parse_rate_limit_string) for supported formats.
+The unified [`@rate_limit`](api.md#pycurb.core.decorators.rate_limit) decorator also supports creating a rule lazily from a shorthand string like `"100/m"` (100 per minute). See [parse_rate_limit_string](api.md#pycurb.utils.parse_rate_limit_string) for supported formats.
 
 Example (Sync):
 
@@ -92,6 +96,47 @@ from pycurb.core import rate_limit, arg_extractor
 @rate_limit(limiter=limiter, limit_str='10/s', key_extractor=arg_extractor("uid"))
 def data(uid: str):
 	return {"status": "okay"}
+```
+
+### Important Notes
+
+**`key_extractor` is mandatory**
+
+The [`@rate_limit`](api.md#pycurb.core.decorators.rate_limit) decorator requires you to provide a `key_extractor` callable. There is no default – a built‑in default like `default` would cause all calls to share the same counter, making rate limiting useless.
+
+Always define a `key_extractor` that returns a unique identifier for your client (e.g., user ID, IP address, API key).
+
+```python
+
+# Good: uses a unique user ID
+
+@rate_limit(limiter, limit_str="10/s", key_extractor=lambda user_id: str(user_id))
+def api_call(user_id: int):
+	...
+
+# Bad: missing key_extractor (will raise TypeError)
+
+@rate_limit(limiter, limit_str="10/s")
+def api_call(user_id: int):
+	...
+```
+
+**[`@rate_limit`](api.md#pycurb.core.decorators.rate_limit) always raises [`RateLimitExceeded`](api.md#pycurb.core.models.RateLimitExceeded)**
+
+When the rate limit is exceeded, the [`@rate_limit`](api.md#pycurb.core.decorators.rate_limit) decorator always raises [`RateLimitExceeded`](api.md#pycurb.core.models.RateLimitExceeded). You must handle the exception explicitly if you need to customise the behaviour (e.g., return a different response).
+
+```python
+
+from pycurb.core import rate_limit, RateLimitExceeded
+
+@rate_limit(limiter, limit_str="10/s", key_extractor=lambda user: str(user))
+def my_function(user: str):
+return {"status": "ok"}
+
+try:
+result = my_function("alice")
+except RateLimitExceeded as e:
+print(f"Rate limited! Retry after {e.result.reset_at}")
 ```
 
 ## Using adapters
