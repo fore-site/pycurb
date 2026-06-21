@@ -1,4 +1,5 @@
 import time
+import math
 from .base import RateLimiterAlgorithm
 from ..models import LimitRule, RateLimitResult
 from ..storage import Storage
@@ -27,7 +28,7 @@ class TokenBucketAlgorithm(RateLimiterAlgorithm):
         allowed, remaining, reset_at = storage.token_bucket(
             key=storage_key, capacity=capacity, refill_rate=refill_rate, now=now
         )
-        retry_after = max(0, int(reset_at - time.time()))
+        retry_after = max(0, math.ceil(reset_at - now))
         return RateLimitResult(
             allowed=allowed,
             remaining=remaining,

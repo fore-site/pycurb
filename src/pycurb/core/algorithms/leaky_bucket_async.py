@@ -1,4 +1,5 @@
 import time
+import math
 from .base_async import AsyncRateLimiterAlgorithm
 from ..models import LimitRule, RateLimitResult
 from ..storage import AsyncStorage
@@ -30,7 +31,7 @@ class AsyncLeakyBucketAlgorithm(AsyncRateLimiterAlgorithm):
         allowed, remaining, reset_at = await storage.leaky_bucket(
             key=storage_key, capacity=capacity, leak_rate=leak_rate, now=now
         )
-        retry_after = max(0, int(reset_at - time.time()))
+        retry_after = max(0, math.ceil(reset_at - now))
         return RateLimitResult(
             allowed=allowed,
             remaining=remaining,

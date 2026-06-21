@@ -1,4 +1,5 @@
 import time
+import math
 from .base import RateLimiterAlgorithm
 from ..models import LimitRule, RateLimitResult
 from ..storage import Storage
@@ -13,7 +14,7 @@ class SlidingWindowAlgorithm(RateLimiterAlgorithm):
         allowed, remaining, reset_at = storage.sliding_window(
             key=storage_key, window=rule.window, limit=rule.limit, now=now
         )
-        retry_after = max(0, int(reset_at - time.time()))
+        retry_after = max(0, math.ceil(reset_at - now))
         return RateLimitResult(
             allowed=allowed,
             remaining=remaining,
