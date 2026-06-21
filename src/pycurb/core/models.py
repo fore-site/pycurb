@@ -7,7 +7,18 @@ import math
 class LimitRule(BaseModel):
     """
     Configuration for a rate limit rule.
+
     Users create an instance of this class to define how requests are limited.
+
+    Attributes:
+        name: Short unique identifier for the rule.
+        algorithm: Rate limit algorithm to use.
+        limit: Maximum requests allowed (window-based) or capacity (token bucket/gcra).
+        window: Time window in seconds (for window-based algorithms) or base to calculate refill rate.
+        capacity: Maximum capacity for token bucket or gcra (burst limit).
+        refill_rate: Tokens added per second for token bucket or requests allowed per second for GCRA.
+        leak_rate: Requests processed per second.
+        metadata: Arbitrary user data for extra conditional logic.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -166,6 +177,14 @@ class LimitRule(BaseModel):
 class RateLimitResult(BaseModel):
     """
     Outcome of a rate limit check.
+
+    Attributes:
+        allowed: Request permitted or not.
+        remaining: Remaining requests/tokens in current window/bucket.
+        reset_at: Unix timestamp (seconds) when the limit resets.
+        limit: The configured limit (for X-RateLimit-Limit header).
+        retry_after: Seconds to wait before retrying (only when allowed is False).
+        rule_name: Name of the rule that was applied.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -193,6 +212,12 @@ class RateLimitResult(BaseModel):
 class RateLimitHeaders(BaseModel):
     """
     Helper to build standard HTTP ratelimit headers.
+
+    Attributes:
+        limit: Value for `X-RateLimit-Limit`.
+        remaining: Value for `X-RateLimit-Remaining`.
+        reset: Value for `X-RateLimit-Reset` (unix timestamp).
+        retry_after: Optional `Retry-After` value in seconds.
     """
 
     limit: int
@@ -234,7 +259,11 @@ class RateLimitHeaders(BaseModel):
 
 
 class RateLimitExceeded(Exception):
-    """Exception raised when rate limit has been exceeded."""
+    """Exception raised when rate limit has been exceeded.
+
+    Attributes:
+        result: The `RateLimitResult` instance returned by the limiter containing details.
+    """
 
     def __init__(self, result: RateLimitResult):
         self.result = result
