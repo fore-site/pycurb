@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/fore-site/pycurb/actions/workflows/test.yml/badge.svg)](https://github.com/fore-site/pycurb/actions)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Documentation Status](https://readthedocs.org/projects/pycurb/badge/?version=latest)](https://pycurb.readthedocs.io/en/latest/?badge=latest)
 
 **PyCurb** is a flexible, and easy‑to‑use rate‑limiting library for Python. It is desgined to be **framework‑agnostic**, i.e, used with FastAPI, Flask, Django, or even in plain scripts and CLI tools. It supports multiple algorithms, redis & in-memory storage backends, and has advanced features like composite (multi‑tier) limits, and dynamic rule updates.
 
@@ -209,3 +210,5 @@ Pycurb provides plug-and-play adapters for popular python frameworks
 ---
 
 ## Links
+
+- [Documentation](https://pycurb.readthedocs.io)
