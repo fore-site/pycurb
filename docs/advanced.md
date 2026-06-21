@@ -4,7 +4,7 @@ Topics for power users: composite rules, dynamic rule management, resolvers, and
 
 [`RateLimiter.check`](api.md#pycurb.core.limiter.RateLimiter.check) accepts a single rule name or a list of rule names. When multiple rules are provided, all must allow the request; the returned [`RateLimitResult`](api.md#pycurb.core.models.RateLimitResult) corresponds to the most restrictive rule (smallest `remaining` / earliest `reset_at`). This allows layering limits (per-user + per-API-key + global).
 
-### ⚠️ Sequential evaluation & no atomicity
+### Sequential evaluation & no atomicity
 
 When you pass a list of rule names, the rules are evaluated sequentially. Each rule updates its own storage state as it is evaluated. If a later rule denies the request, the earlier rules have already consumed their quota – there is no rollback.
 
@@ -14,8 +14,8 @@ When you pass a list of rule names, the rules are evaluated sequentially. Each r
 
 **Note**: Atomic multi‑rule checks are not supported out of the box. If you need atomicity, consider:
 
-- Combining limits into a single composite rule (e.g., `limit = min(per_minute, per_hour)`).
-- Implementing a custom storage backend with transactions.
+- Combining limits with similar semantics (recommended: same algorithm) into a single composite rule (e.g., `limit = min(per_minute, per_hour)`).
+- Implementing a custom storage backend with transactional multi-check.
 - Using a Lua script (for Redis) that checks and updates all keys atomically.
 
 ## Dynamic rules & resolvers
@@ -72,6 +72,54 @@ The `@rate_limit(limiter, limit_str="100/s", ...)` decorator creates a rule dyna
 The default [`RuleResolver`](api.md#pycurb.core.resolver.RuleResolver) and [`AsyncRuleResolver`](api.md#pycurb.core.resolver.AsyncRuleResolver) support this.
 
 If you provide a custom resolver that does not have add_rule, the decorator will fail with a `TypeError`.
+
+## Metadata Field in [`LimitRule`](api.md#pycurb.core.models.LimitRule)
+
+The [`LimitRule`](api.md#pycurb.core.models.LimitRule) model includes an optional `metadata` field:
+
+```python
+from pycurb.core import LimitRule
+
+rule = LimitRule(
+    name="api",
+    algorithm="sliding_window",
+    limit=100,
+    window=60,
+    metadata={"tier": "premium", "description": "API rate limit for premium users"}
+)
+```
+
+### Purpose
+
+The `metadata` field is not used by the core rate limiter – it is provided for application‑specific annotations. You can attach any arbitrary data to a rule without affecting its behaviour.
+
+### Common Use Cases
+
+- Rule classification – attach labels like "priority", "tier", "team", or "owner".
+
+- Observability – add a "description" or "version" to help with debugging and monitoring.
+
+- Conditional logic in adapters – use `metadata` in a custom resolver or framework adapter to influence behaviour (e.g., different error messages for different tiers).
+
+- Configuration management – when loading rules from a database or YAML, store extra fields that your application needs.
+
+### Example: Using Metadata in a Resolver
+
+```python
+
+class TieredResolver:
+    def __call__(self, name: str) -> LimitRule:
+        rule = self._rules[name]
+        tier = rule.metadata.get("tier", "free")
+        if tier == "premium":
+            # Return a higher‑limit rule for premium users
+            return LimitRule(name=name, algorithm="sliding_window", limit=1000, window=60)
+        return rule
+```
+
+### Note
+
+The `metadata` field is ignored by all algorithms and storage backends. It does not affect rate‑limiting decisions – it's purely for user‑defined data.
 
 ## Multi‑tier headers
 
