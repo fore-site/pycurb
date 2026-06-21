@@ -91,17 +91,17 @@ rule = LimitRule(
 
 ### Purpose
 
-The `metadata` field is not used by the core rate limiter – it is provided for application‑specific annotations. You can attach any arbitrary data to a rule without affecting its behaviour.
+The `metadata` field is not used by the core rate limiter, it is provided for application‑specific annotations. You can attach any arbitrary data to a rule without affecting its behaviour.
 
 ### Common Use Cases
 
-- Rule classification – attach labels like "priority", "tier", "team", or "owner".
+- Rule classification: Attach labels like "priority", "tier", "team", or "owner".
 
-- Observability – add a "description" or "version" to help with debugging and monitoring.
+- Observability: Add a "description" or "version" to help with debugging and monitoring.
 
-- Conditional logic in adapters – use `metadata` in a custom resolver or framework adapter to influence behaviour (e.g., different error messages for different tiers).
+- Conditional logic in adapters: Use `metadata` in a custom resolver or framework adapter to influence behaviour (e.g., different error messages for different tiers).
 
-- Configuration management – when loading rules from a database or YAML, store extra fields that your application needs.
+- Configuration management: When loading rules from a database or YAML, store extra fields that your application needs.
 
 ### Example: Using Metadata in a Resolver
 
@@ -119,7 +119,7 @@ class TieredResolver:
 
 ### Note
 
-The `metadata` field is ignored by all algorithms and storage backends. It does not affect rate‑limiting decisions – it's purely for user‑defined data.
+The `metadata` field is ignored by all algorithms and storage backends. It does not affect rate‑limiting decisions, it's purely for user‑defined data.
 
 ## Multi‑tier headers
 

@@ -4,15 +4,15 @@ This page describes the rate-limiting algorithms implemented by pycurb and the c
 
 ## Supported algorithms
 
-- `sliding_window` — Accurate sliding-window counter built on timestamped events. Requires `limit` and `window` (seconds). Good for precision with modest storage.
+- `sliding_window`: Accurate sliding-window counter built on timestamped events. Requires `limit` and `window` (seconds). Good for precision with modest storage.
 
-- `fixed_window` — Simpler fixed window counters. Requires `limit` and `window`. Uses less storage but can produce short bursts at window boundaries.
+- `fixed_window`: Simpler fixed window counters. Requires `limit` and `window`. Uses less storage but can produce short bursts at window boundaries.
 
-- `token_bucket` — Token bucket supporting burst capacity and steady refill. Requires `capacity` (or `limit` fallback) and `refill_rate` (tokens/second) or `window` fallback to derive refill rate.
+- `token_bucket`: Token bucket supporting burst capacity and steady refill. Requires `capacity` (or `limit` fallback) and `refill_rate` (tokens/second) or `window` fallback to derive refill rate.
 
-- `leaky_bucket` — Queue-like smoothing (leaky bucket). Requires `capacity` (or `limit` fallback) and `leak_rate` (requests/second) or `window` fallback to derive `leak_rate`.
+- `leaky_bucket`: Queue-like smoothing (leaky bucket). Requires `capacity` (or `limit` fallback) and `leak_rate` (requests/second) or `window` fallback to derive `leak_rate`.
 
-- `gcra` — Generic Cell Rate Algorithm (GCRA) for precise rate pacing with burst allowance. Requires `capacity` (or `limit` fallback) and `refill_rate` (or `window` fallback to derive `rate`).
+- `gcra`: Generic Cell Rate Algorithm (GCRA) for precise rate pacing with burst allowance. Requires `capacity` (or `limit` fallback) and `refill_rate` (or `window` fallback to derive `rate`).
 
 `limit` and `window` fallbacks for non-window algorithms, while okay, are only recommended when using `limit_str` argument in [`rate_limit`](api.md#pycurb.core.decorators.rate_limit) decorator. If you have the option to configure `capacity` and `rate` directly, do so.
 
@@ -46,7 +46,7 @@ tb = LimitRule(name="api:token", algorithm="token_bucket", capacity=50, refill_r
 
 ### Fixed Window: Boundary Burst Vulnerability
 
-Fixed window allows up to limit requests in each aligned window. However, because the counter resets exactly at the window boundary, a client can send limit requests at the very end of one window and another limit requests at the very start of the next window — effectively achieving 2 \* limit requests in a very short time (e.g., within a few milliseconds).
+Fixed window allows up to limit requests in each aligned window. However, because the counter resets exactly at the window boundary, a client can send limit requests at the very end of one window and another limit requests at the very start of the next window, effectively achieving 2 \* limit requests in a very short time (e.g., within a few milliseconds).
 
 Example:
 
@@ -56,7 +56,7 @@ Example:
 
     At 60.001s, the client sends another 100 requests (start of the next window).
 
-    Total = 200 requests in ~2 ms — double the intended limit.
+    Total = 200 requests in ~2 ms, i.e double the intended limit.
 
 Mitigation:
 
@@ -77,11 +77,11 @@ queue = max(0, queue - (now - last_leak) * leak_rate)
 
 This means:
 
-- No background processes — the algorithm is purely event‑driven and does not waste resources.
+- No background processes: The algorithm is purely event‑driven and does not waste resources.
 
-- Fractional leaks are preserved — if only 0.6 of a request should have leaked, the fractional part is retained and applied to future calculations.
+- Fractional leaks are preserved: If only 0.6 of a request should have leaked, the fractional part is retained and applied to future calculations.
 
-- Accurate even under high‑frequency requests — the bucket will eventually leak as expected, without the “never leaks” bug that occurs in naive integer‑only implementations.
+- Accurate even under high‑frequency requests: The bucket will eventually leak as expected, without the “never leaks” bug that occurs in naive integer‑only implementations.
 
 Why this matters:
 
