@@ -63,8 +63,3 @@ Notes:
     </div>
 
 </div>
-
-<!-- Load Plotly from CDN -->
-<script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
-<!-- Visualization script -->
-<script src="/js/performance.js"></script>
