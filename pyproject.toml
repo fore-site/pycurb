@@ -60,6 +60,7 @@ docs = [
     "mkdocs-material>=9.7.6",
     "mkdocstrings-python>=2.0.5",
     "mkdocstrings-python-xref>=2.1.1",
+    "ruff>=0.15.18"
 ]
 
 [project.urls]
