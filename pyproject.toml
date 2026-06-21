@@ -62,7 +62,6 @@ docs = [
     "mkdocstrings-python-xref>=2.1.1",
 ]
 
-
 [project.urls]
 Homepage = "https://github.com/fore-site/pycurb"
 Repository = "https://github.com/fore-site/pycurb"

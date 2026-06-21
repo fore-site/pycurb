@@ -1547,6 +1547,13 @@ django = [
     { name = "django", version = "5.2.15", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "django", version = "6.0.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
+docs = [
+    { name = "mkdocs" },
+    { name = "mkdocs-git-revision-date-localized-plugin" },
+    { name = "mkdocs-material" },
+    { name = "mkdocstrings-python" },
+    { name = "mkdocstrings-python-xref" },
+]
 fastapi = [
     { name = "fastapi" },
     { name = "starlette" },
@@ -1584,12 +1591,17 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.137.0" },
     { name = "flask", marker = "extra == 'flask'", specifier = ">=3.0.0" },
     { name = "flask-login", marker = "extra == 'flask'", specifier = ">=0.6.3" },
+    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
+    { name = "mkdocs-git-revision-date-localized-plugin", marker = "extra == 'docs'", specifier = ">=1.5.3" },
+    { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.7.6" },
+    { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=2.0.5" },
+    { name = "mkdocstrings-python-xref", marker = "extra == 'docs'", specifier = ">=2.1.1" },
     { name = "pycurb", extras = ["redis", "fastapi", "django", "flask"], marker = "extra == 'all'" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "redis", marker = "extra == 'redis'", specifier = ">=8.0.0" },
     { name = "starlette", marker = "extra == 'fastapi'", specifier = ">=1.0.0" },
 ]
-provides-extras = ["fastapi", "django", "flask", "redis", "all"]
+provides-extras = ["fastapi", "django", "flask", "redis", "all", "docs"]
 
 [package.metadata.requires-dev]
 dev = [
