@@ -9,13 +9,12 @@ class TestLimitRule:
 
     def test_valid_sliding_window(self):
         rule = LimitRule(
-            name="test", algorithm="sliding_window", limit=100, window=60, key_type="ip"
+            name="test", algorithm="sliding_window", limit=100, window=60
         )
         assert rule.name == "test"
         assert rule.algorithm == "sliding_window"
         assert rule.limit == 100
         assert rule.window == 60
-        assert rule.key_type == "ip"
         assert rule.capacity is None
         assert rule.refill_rate is None
         assert rule.leak_rate is None

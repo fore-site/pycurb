@@ -93,7 +93,7 @@ def assert_result(
     assert result.remaining == remaining
     assert result.reset_at == pytest.approx(reset_at)
     assert result.limit == limit
-    assert result.retry_after is None
+    assert result.retry_after is None if result.allowed else RESET_AT - BASE_TIME
     assert result.rule_name == rule_name
 
 
