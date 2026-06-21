@@ -30,11 +30,12 @@ class AsyncLeakyBucketAlgorithm(AsyncRateLimiterAlgorithm):
         allowed, remaining, reset_at = await storage.leaky_bucket(
             key=storage_key, capacity=capacity, leak_rate=leak_rate, now=now
         )
+        retry_after = max(0, int(reset_at - time.time()))
         return RateLimitResult(
             allowed=allowed,
             remaining=remaining,
             reset_at=reset_at,
             limit=capacity,
-            retry_after=None,
+            retry_after=retry_after if not allowed else None,
             rule_name=rule.name,
         )
