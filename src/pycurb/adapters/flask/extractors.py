@@ -29,3 +29,7 @@ def session_user_extractor():
 def api_key_extractor(header="X-API-Key"):
     """Extract API key from a custom header."""
     return request.headers.get(header, "")
+
+def custom_extractor(extractor_func):
+    """Decorator to register custom extractors (optional)."""
+    return extractor_func

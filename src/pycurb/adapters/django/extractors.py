@@ -19,3 +19,7 @@ def user_id_extractor(request: HttpRequest) -> str:
 def api_key_extractor(request: HttpRequest, header: str = "X-API-Key") -> str:
     """Extract API key from a custom header."""
     return request.headers.get(header, "")
+
+def custom_extractor(extractor_func):
+    """Decorator to register custom extractors (optional)."""
+    return extractor_func
