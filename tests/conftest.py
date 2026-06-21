@@ -1,5 +1,6 @@
 import pytest
 import pytest_asyncio
+import os
 import redis
 import redis.asyncio as aioredis
 from unittest.mock import AsyncMock, MagicMock
@@ -53,6 +54,45 @@ async def async_redis_storage():
     await storage.close()
 
 
+@pytest_asyncio.fixture
+async def async_redis_storage_sentinel():
+    url = os.environ.get('REDIS_SENTINEL_URL')
+    if not url:
+        pytest.skip('REDIS_SENTINEL_URL not set, skipping sentinel tests.')
+    redis_client = aioredis.from_url(url, decode_responses=True)
+    await clear_async_redis_test_keys(redis_client)
+    storage = AsyncRedisStorage(redis_client, key_prefix='test:')
+    yield storage
+    await clear_async_redis_test_keys(redis_client)
+    await storage.close()
+
+
+@pytest_asyncio.fixture
+async def async_redis_storage_cluster():
+    url = os.environ.get('REDIS_CLUSTER_URL')
+    if not url:
+        pytest.skip('REDIS_CLUSTER_URL not set, skipping cluster tests.')
+    redis_client = aioredis.from_url(url, decode_responses=True)
+    await clear_async_redis_test_keys(redis_client)
+    storage = AsyncRedisStorage(redis_client, key_prefix='test:')
+    yield storage
+    await clear_async_redis_test_keys(redis_client)
+    await storage.close()
+
+
+@pytest_asyncio.fixture
+async def async_redis_storage_tls():
+    url = os.environ.get('REDIS_TLS_URL')
+    if not url:
+        pytest.skip('REDIS_TLS_URL not set, skipping TLS tests.')
+    redis_client = aioredis.from_url(url, decode_responses=True)
+    await clear_async_redis_test_keys(redis_client)
+    storage = AsyncRedisStorage(redis_client, key_prefix='test:')
+    yield storage
+    await clear_async_redis_test_keys(redis_client)
+    await storage.close()
+
+
 # Sync fixtures
 
 
@@ -70,6 +110,45 @@ def sync_redis_storage():
     redis_client = redis.from_url("redis://localhost:6379", decode_responses=True)
     clear_sync_redis_test_keys(redis_client)
     storage = RedisStorage(redis_client, key_prefix="test:")
+    yield storage
+    clear_sync_redis_test_keys(redis_client)
+    storage.close()
+
+
+@pytest.fixture
+def sync_redis_storage_sentinel():
+    url = os.environ.get('REDIS_SENTINEL_URL')
+    if not url:
+        pytest.skip('REDIS_SENTINEL_URL not set, skipping sentinel tests.')
+    redis_client = redis.from_url(url, decode_responses=True)
+    clear_sync_redis_test_keys(redis_client)
+    storage = RedisStorage(redis_client, key_prefix='test:')
+    yield storage
+    clear_sync_redis_test_keys(redis_client)
+    storage.close()
+
+
+@pytest.fixture
+def sync_redis_storage_cluster():
+    url = os.environ.get('REDIS_CLUSTER_URL')
+    if not url:
+        pytest.skip('REDIS_CLUSTER_URL not set, skipping cluster tests.')
+    redis_client = redis.from_url(url, decode_responses=True)
+    clear_sync_redis_test_keys(redis_client)
+    storage = RedisStorage(redis_client, key_prefix='test:')
+    yield storage
+    clear_sync_redis_test_keys(redis_client)
+    storage.close()
+
+
+@pytest.fixture
+def sync_redis_storage_tls():
+    url = os.environ.get('REDIS_TLS_URL')
+    if not url:
+        pytest.skip('REDIS_TLS_URL not set, skipping TLS tests.')
+    redis_client = redis.from_url(url, decode_responses=True)
+    clear_sync_redis_test_keys(redis_client)
+    storage = RedisStorage(redis_client, key_prefix='test:')
     yield storage
     clear_sync_redis_test_keys(redis_client)
     storage.close()

@@ -1,8 +1,20 @@
 import pytest
 import math
 
-ASYNC_STORAGE_FIXTURES = ["async_memory_storage", "async_redis_storage"]
-SYNC_STORAGE_FIXTURES = ["sync_memory_storage", "sync_redis_storage"]
+ASYNC_STORAGE_FIXTURES = [
+    "async_memory_storage",
+    "async_redis_storage",
+    "async_redis_storage_sentinel",
+    "async_redis_storage_cluster",
+    "async_redis_storage_tls",
+]
+SYNC_STORAGE_FIXTURES = [
+    "sync_memory_storage",
+    "sync_redis_storage",
+    "sync_redis_storage_sentinel",
+    "sync_redis_storage_cluster",
+    "sync_redis_storage_tls",
+]
 BASE_TIME = 1_700_000_000.25
 EPSILON = 0.001
 
