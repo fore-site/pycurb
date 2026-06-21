@@ -165,8 +165,7 @@ result = await limiter.check(user_id, "api")
 if result.allowed:
     print(f"Allowed – remaining: {result.remaining}")
 else:
-    retry_after = max(0, int(result.reset_at - time.time()))
-    print(f"Denied – retry after: {retry_after}")
+    print(f"Denied – retry after: {result.retry_after}")
 
 asyncio.run(fetch_data("user-123"))
 ```
@@ -184,7 +183,7 @@ def handle_request(user_id: str):
     if result.allowed:
         print("Request allowed")
     else:
-        print("Rate limited")
+        print(f"Rate limited. Retry after {result.retry_after} seconds.")
 ```
 
 ### Using the Decorator
@@ -211,4 +210,4 @@ Pycurb provides plug-and-play adapters for popular python frameworks
 
 ## Links
 
-- [Documentation](https://pycurb.readthedocs.io)
+- [Documentation](https://pycurb.readthedocs.io/en/latest)
