@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, Literal, Dict, Any
 import time
+import math
 
 
 class LimitRule(BaseModel):
@@ -222,7 +223,7 @@ class RateLimitHeaders(BaseModel):
             now = time.time()
         retry_after = result.retry_after
         if retry_after is None and not result.allowed:
-            retry_after = max(0, int(result.reset_at - now))
+            retry_after = max(0, math.ceil(result.reset_at - now))
 
         return cls(
             limit=result.limit,
@@ -237,5 +238,5 @@ class RateLimitExceeded(Exception):
 
     def __init__(self, result: RateLimitResult):
         self.result = result
-        retry_after = max(0, int(result.reset_at - time.time()))
+        retry_after = max(0, math.ceil(result.reset_at - time.time()))
         super().__init__(f"Rate limit exceeded. Retry after {retry_after} seconds.")

@@ -56,6 +56,7 @@ def rate_limit(
     Raises:
         RateLimitExceeded: If rate limit has been exceeded.
 
+
     Exactly one of rule_name or limit_str must be provided.
     """
     if (rule_name is None) == (limit_str is None):
