@@ -79,6 +79,8 @@ Notes:
             console.warn('Could not load performance data', e);
         }
         console.log('Throughput data fetched');
+		console.log(DATA)
+		console.log(DATA.throughput)
         return DATA;
     }
 
