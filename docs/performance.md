@@ -71,9 +71,24 @@ Notes:
 
     var DATA = {throughput: []};
 
+	function getBasePath() {
+		var path = window.location.pathname;
+		// Remove trailing file or directory
+		var parts = path.split('/');
+		// If the last part contains '.', it's a file (e.g., performance/index.html)
+		// Otherwise, it's a directory
+		if (parts[parts.length - 1].includes('.')) {
+			parts.pop();
+		}
+		return parts.join('/');
+	}
+
     async function loadData(){
         try{
-            var thrRes = await fetch('/data/throughput.json');
+			var base = getBasePath();
+			var url = base + '/data/throughput.json';
+			console.log('Fetching from ', url);
+            var thrRes = await fetch(url);
 			console.log('Status: ', thrRes.status);
 			console.log('Content type: ', thrRes.headers.get('content-type'))
             if (thrRes.ok){
