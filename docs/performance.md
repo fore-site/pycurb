@@ -74,7 +74,15 @@ Notes:
     async function loadData(){
         try{
             var thrRes = await fetch('/data/throughput.json');
-            if (thrRes.ok){ DATA.throughput = await thrRes.json(); }
+			console.log('Status: ', thrRes.status);
+			console.log('Content type: ', thrRes.headers.get('content-type'))
+            if (thrRes.ok){
+				DATA.throughput = await thrRes.json();
+				console.log('Parsed data length: ', DATA.throughput.length)
+			} else {
+				console.warn('Fetch failed with status: ', thrRes.status)
+			}
+
         } catch(e){
             console.warn('Could not load performance data', e);
         }
