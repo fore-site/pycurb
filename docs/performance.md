@@ -11,6 +11,7 @@ Fill level: <select id="perf-fill"></select>
 Limit: <select id="perf-limit"></select>
 </div>
 
+<h3>Throughput (Requests/sec)</h3>
 <div id="throughput-chart" style="width:100%;height:500px;"></div>
 
 </div>
