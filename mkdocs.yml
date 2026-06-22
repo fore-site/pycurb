@@ -40,9 +40,9 @@ extra:
 
 extra_javascript:
   - https://cdn.plot.ly/plotly-3.6.0.min.js
-  
-  - path: javascripts/performance.js
-    defer: true
+
+  # - path: javascripts/performance.js
+  #   defer: true
 
 plugins:
   - search
