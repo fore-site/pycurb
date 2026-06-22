@@ -11,6 +11,7 @@
         } catch(e){
             console.warn('Could not load performance data', e);
         }
+        console.log('Throughput data fetched');
         return DATA;
     }
 
