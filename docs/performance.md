@@ -73,14 +73,13 @@ Notes:
 
 	function getBasePath() {
 		var path = window.location.pathname;
-		// Remove trailing file or directory
-		var parts = path.split('/');
-		// If the last part contains '.', it's a file (e.g., performance/index.html)
-		// Otherwise, it's a directory
-		if (parts[parts.length - 1].includes('.')) {
-			parts.pop();
+		var parts = path.split('/').filter(function(p) { return p !== ''; });
+
+		if (parts.length >= 2) {
+			return '/' + parts[0] + '/' + parts[1];
 		}
-		return parts.join('/');
+		// Fallback for local development (mkdocs serve) or other environments
+		return '';
 	}
 
     async function loadData(){
