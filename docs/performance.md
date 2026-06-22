@@ -86,13 +86,9 @@ Notes:
         try{
 			var base = getBasePath();
 			var url = base + '/data/throughput.json';
-			console.log('Fetching from ', url);
             var thrRes = await fetch(url);
-			console.log('Status: ', thrRes.status);
-			console.log('Content type: ', thrRes.headers.get('content-type'))
             if (thrRes.ok){
 				DATA.throughput = await thrRes.json();
-				console.log('Parsed data length: ', DATA.throughput.length)
 			} else {
 				console.warn('Fetch failed with status: ', thrRes.status)
 			}
@@ -100,9 +96,6 @@ Notes:
         } catch(e){
             console.warn('Could not load performance data', e);
         }
-        console.log('Throughput data fetched');
-		console.log(DATA)
-		console.log(DATA.throughput)
         return DATA;
     }
 
@@ -176,23 +169,12 @@ Notes:
     }
 
     function init(){
-        console.log('Inside init func')
         loadData().then(function(data){
             var combined = data.throughput;
             var algs = uniq(combined.map(function(d){return d.algorithm})).sort();
             var storages = uniq(combined.map(function(d){return d.storage})).sort();
             var fills = uniq(combined.map(function(d){return d.fill_level})).sort(function(a,b){return a-b});
             var limits = uniq(combined.map(function(d){return d.limit})).sort(function(a,b){return a-b});
-            console.log('Data: ')
-            console.log(data)
-            console.log('Throughput data: ')
-            console.log(data.throughput)
-            console.log('Throughput sorted data:')
-            console.log(algs);
-            console.log(storages);
-            console.log(fills);
-            console.log(limits);
-            console.log('End.')
             buildOptions(el('perf-algo'), algs);
             buildOptions(el('perf-storage'), storages);
             if (el('perf-fill')) buildNumericOptions(el('perf-fill'), fills);
@@ -207,10 +189,8 @@ Notes:
 
     // wait for DOM
     if (document.readyState === 'loading'){
-        console.log('adding init as listener')
         document.addEventListener('DOMContentLoaded', init);
     } else {
-        console.log('manually starting init...')
         init();
     }
 })();
