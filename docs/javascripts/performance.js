@@ -85,6 +85,7 @@
     }
 
     function init(){
+        console.log('Inside init func')
         loadData().then(function(data){
             var combined = data.throughput;
             var algs = uniq(combined.map(function(d){return d.algorithm})).sort();
@@ -115,8 +116,10 @@
 
     // wait for DOM
     if (document.readyState === 'loading'){
+        console.log('adding init as listener')
         document.addEventListener('DOMContentLoaded', init);
     } else {
+        console.log('manually starting init...')
         init();
     }
 })();
