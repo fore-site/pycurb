@@ -91,6 +91,10 @@
             var storages = uniq(combined.map(function(d){return d.storage})).sort();
             var fills = uniq(combined.map(function(d){return d.fill_level})).sort(function(a,b){return a-b});
             var limits = uniq(combined.map(function(d){return d.limit})).sort(function(a,b){return a-b});
+            console.log(algs);
+            console.log(storages);
+            console.log(fills);
+            console.log(limits);
             buildOptions(el('perf-algo'), algs);
             buildOptions(el('perf-storage'), storages);
             if (el('perf-fill')) buildNumericOptions(el('perf-fill'), fills);
