@@ -46,7 +46,7 @@ limiter_async = AsyncRateLimiter(storage=storage, rules=rule)
 
 ```python
 result = limiter.check("1.2.3.4", "api")
-if result.allowed:
+if result:	# can also use `if result.allowed`
 	# proceed
 else:
 	# handle limit exceeded

@@ -17,7 +17,7 @@ def rate_limiter(
     async def dependency(request: Request) -> RateLimitResult:
         key = key_extractor(request)
         result = await limiter.check(key, rule_name)
-        if not result.allowed:
+        if not result:
             retry_after = max(1, int(result.reset_at - time.time()))
             raise HTTPException(
                 status_code=429,

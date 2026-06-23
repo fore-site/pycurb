@@ -22,7 +22,7 @@ def rate_limit(
         def wrapper(*args, **kwargs):
             key = key_extractor()
             result = limiter.check(key, rule_name)
-            if not result.allowed:
+            if not result:
                 if on_limit:
                     response = on_limit(result)
                     if response is not None:

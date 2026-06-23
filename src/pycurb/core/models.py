@@ -208,6 +208,10 @@ class RateLimitResult(BaseModel):
         default=None, description="Name of the rule that was applied."
     )
 
+    def __bool__(self):
+        """Return True if allowed, False otherwise."""
+        return self.allowed
+
 
 class RateLimitHeaders(BaseModel):
     """

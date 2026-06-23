@@ -31,7 +31,7 @@ def create_rate_limit_middleware(
         def __call__(self, request):
             key = self.key_extractor(request)
             result = self.limiter.check(key, self.rule_name)
-            if not result.allowed:
+            if not result:
                 headers = RateLimitHeaders.from_result(result)
                 response = JsonResponse({"detail": "Rate limit exceeded"}, status=429)
                 for name, value in headers.to_dict().items():

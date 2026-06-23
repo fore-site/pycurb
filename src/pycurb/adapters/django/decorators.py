@@ -36,8 +36,7 @@ def rate_limit(
         def sync_wrapper(request, *args, **kwargs):
             key = key_extractor(request)
             limiter_sync = cast(RateLimiter, limiter)
-            result = limiter_sync.check(key, rule_name)
-            if not result.allowed:
+            if not (result:= limiter_sync.check(key, rule_name)):
                 if on_limit:
                     return on_limit(request, result)
                 headers = RateLimitHeaders.from_result(result)
@@ -56,8 +55,7 @@ def rate_limit(
         async def async_wrapper(request, *args, **kwargs):
             key = key_extractor(request)
             limiter_async = cast(AsyncRateLimiter, limiter)
-            result = await limiter_async.check(key, rule_name)
-            if not result.allowed:
+            if not (result:= await limiter_async.check(key, rule_name)):
                 if on_limit:
                     return on_limit(request, result)
                 headers = RateLimitHeaders.from_result(result)

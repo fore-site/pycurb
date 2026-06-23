@@ -39,6 +39,7 @@ class TestAsyncManualUsage:
 
         # Check within limit
         result = await limiter.check("key1", "test")
+
         assert result.allowed is True
         assert result.remaining == 1
         # Second request allowed
@@ -47,7 +48,7 @@ class TestAsyncManualUsage:
         assert result.remaining == 0
         # Third denied
         result = await limiter.check("key1", "test")
-        assert result.allowed is False
+        assert bool(result) is False
         # Different key independent
         result = await limiter.check("key2", "test")
         assert result.allowed is True

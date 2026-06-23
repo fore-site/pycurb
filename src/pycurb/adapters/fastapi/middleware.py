@@ -37,7 +37,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         key = self.key_extractor(request)
         result = await self.limiter.check(key, self.rule_name)
 
-        if not result.allowed:
+        if not result:
             headers = RateLimitHeaders.from_result(result)
             return JSONResponse(
                 status_code=429,

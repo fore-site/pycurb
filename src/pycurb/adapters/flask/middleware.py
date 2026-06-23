@@ -35,8 +35,7 @@ class RateLimit:
 
     def before_request(self):
         key = self.key_extractor()
-        result = self.limiter.check(key, self.rule_name)
-        if not result.allowed:
+        if not (result:= self.limiter.check(key, self.rule_name)):
             headers = RateLimitHeaders.from_result(result)
             resp = make_response(jsonify({"detail": "Rate limit exceeded"}), 429)
             for name, value in headers.to_dict().items():

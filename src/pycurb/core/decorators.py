@@ -113,7 +113,7 @@ def rate_limit(
 
                 key = key_extractor(*args, **kwargs)
                 result = await limiter_async.check(key, effective_rule_name)
-                if result.allowed:
+                if result:
                     return await func(*args, **kwargs)
                 else:
                     raise RateLimitExceeded(result)
@@ -144,7 +144,7 @@ def rate_limit(
 
                 key = key_extractor(*args, **kwargs)
                 result = limiter_sync.check(key, effective_rule_name)
-                if result.allowed:
+                if result:
                     return func(*args, **kwargs)
                 else:
                     raise RateLimitExceeded(result)
