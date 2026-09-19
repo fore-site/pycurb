@@ -12,12 +12,28 @@ from pycurb.core.storage import (
 )
 
 
+# Availability cache keyed by (host, port). Redis availability cannot change
+# mid-run in CI (the service is started before pytest), so one honest probe per
+# session is sufficient. Without caching, every redis-fixture instantiation
+# pays a full connect/retry cycle (~4-5s measured) when Redis is down, which
+# multiplied across hundreds of fixture setups dominated CI wall time on
+# OSes where no Redis service runs.
+_redis_availability_cache: dict[tuple[str, int], bool] = {}
+
+
 def is_redis_available(host="localhost", port=6379):
+    cache_key = (host, port)
+    if cache_key in _redis_availability_cache:
+        return _redis_availability_cache[cache_key]
     try:
-        r = redis.Redis(host=host, port=port)
-        return r.ping()
+        r = redis.Redis(
+            host=host, port=port, socket_connect_timeout=0.5, socket_timeout=0.5
+        )
+        available = bool(r.ping())
     except Exception:
-        return False
+        available = False
+    _redis_availability_cache[cache_key] = available
+    return available
 
 
 async def clear_async_redis_test_keys(redis_client):
