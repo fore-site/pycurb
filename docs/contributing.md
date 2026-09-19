@@ -118,6 +118,14 @@ A few invariants worth understanding before changing internals:
   consumers (algorithms, `RateLimitHeaders`, adapters) must handle it
   gracefully rather than assuming a finite timestamp. Regression tests live in
   `tests/core/test_fail_closed_chain.py`.
+- **Redis backends are lazy imports (PEP 562).** The core package must import
+  cleanly without the optional `redis` dependency, so `storage/__init__.py`
+  and `core/__init__.py` expose `RedisStorage`/`AsyncRedisStorage` via module
+  `__getattr__` instead of eager imports. Do not add top-level redis imports
+  to any `__init__.py`; do not move the redis modules' own imports out of
+  their modules. Regression tests live in
+  `tests/core/test_lazy_redis_import.py` (they simulate a redis-less
+  environment in a subprocess).
 - **Sync and async worlds are parallel, not shared.** Algorithms, storage, and
   resolvers each have sync and async variants with mirrored logic. Changes
   must be applied to both sides and covered by both test suites.

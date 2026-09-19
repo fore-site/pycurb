@@ -1,3 +1,32 @@
+## v0.2.2
+
+Release date: 09-19-2026
+
+Fixed
+
+- **`pip install pycurb` (core only) crashed at import time** with
+  `ModuleNotFoundError: No module named 'redis'`. The storage package
+  eagerly imported the Redis backends even though `redis` is an optional
+  extra. This bug was present since v0.2.0 and went unnoticed because CI
+  always installs `pycurb[all]`.
+- The Redis storage classes (`RedisStorage`, `AsyncRedisStorage`) are now
+  loaded lazily via PEP 562 module `__getattr__`. Importing `pycurb`,
+  `pycurb.core`, or `pycurb.core.storage` no longer requires redis; the
+  backends load only when actually accessed. All existing import paths
+  (`from pycurb.core import RedisStorage`,
+  `from pycurb.core.storage import RedisStorage`, direct module imports)
+  continue to work and yield the same class objects.
+- Accessing a Redis backend without `redis` installed now raises an
+  `ImportError` with an actionable message (`pip install pycurb[redis]`)
+  instead of a bare `ModuleNotFoundError`.
+
+Added
+
+- Regression test suite (`tests/core/test_lazy_redis_import.py`) that runs
+  fresh interpreters with redis imports blocked, asserting the core package
+  imports cleanly, the public surface still names the Redis classes, and
+  error messages include the install hint.
+
 ## v0.2.1
 
 Release date: 09-19-2026
