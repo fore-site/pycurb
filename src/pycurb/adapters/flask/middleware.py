@@ -1,5 +1,5 @@
 from flask import make_response, jsonify, request
-from typing import Optional, Union, List, Callable
+from typing import Union, List, Callable
 from pycurb.core import RateLimiter
 from pycurb.core.models import RateLimitHeaders
 from .extractors import ip_extractor
@@ -35,7 +35,7 @@ class RateLimit:
 
     def before_request(self):
         key = self.key_extractor()
-        if not (result:= self.limiter.check(key, self.rule_name)):
+        if not (result := self.limiter.check(key, self.rule_name)):
             headers = RateLimitHeaders.from_result(result)
             resp = make_response(jsonify({"detail": "Rate limit exceeded"}), 429)
             for name, value in headers.to_dict().items():

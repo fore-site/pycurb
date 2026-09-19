@@ -75,12 +75,14 @@ Example (Async) with list of rules (composite):
 ```python
 from pycurb.core import rate_limit
 
-rules.append(LimitRule((name="global", algorithm="token_bucket", capacity=100, refill_rate=10)))
+rules.append(LimitRule(name="global", algorithm="token_bucket", capacity=100, refill_rate=10))
 
-@rate_limit(limiter=limiter, ='10/s', rule_name=rules, key_extractor=lambda user_id: str(user_id))
-def data(user_id: str):
+@rate_limit(limiter=limiter_async, rule_name=rules, key_extractor=lambda user_id: str(user_id))
+async def data(user_id: str):
 	return {"status": "okay"}
 ```
+
+Note: `rule_name` and `limit_str` are mutually exclusive — provide exactly one of them.
 
 ## Using the [`rate_limit`](api.md#pycurb.core.decorators.rate_limit) decorator with shorthand `limit_str`
 

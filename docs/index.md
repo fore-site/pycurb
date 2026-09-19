@@ -153,12 +153,12 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
 </div>
 
-## Production‑Ready
+## Quality
 
 <div class="grid cards" markdown>
 
-- **Type-safe:** Fully annotated with type hints for better IDE support.
-- **Tested:** Comprehensive test suite with broad coverage.
+- **Type-safe:** Fully annotated with type hints (PEP 561 `py.typed` marker) for better IDE support.
+- **Tested:** Comprehensive test suite across algorithms, storage backends, and adapters, run on Linux, macOS, and Windows with Python 3.10–3.14.
 - **Benchmarked:** Performance-tested across algorithms and storage backends.
 - **Documented:** Extensive documentation with practical examples.
 

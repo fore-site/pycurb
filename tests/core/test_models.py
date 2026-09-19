@@ -8,9 +8,7 @@ class TestLimitRule:
     """Test the LimitRule configuration model."""
 
     def test_valid_sliding_window(self):
-        rule = LimitRule(
-            name="test", algorithm="sliding_window", limit=100, window=60
-        )
+        rule = LimitRule(name="test", algorithm="sliding_window", limit=100, window=60)
         assert rule.name == "test"
         assert rule.algorithm == "sliding_window"
         assert rule.limit == 100

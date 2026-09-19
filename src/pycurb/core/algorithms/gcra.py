@@ -26,7 +26,9 @@ class GcraAlgorithm(RateLimiterAlgorithm):
         allowed, remaining, reset_at = storage.gcra(
             key=storage_key, capacity=capacity, rate=rate, now=now
         )
-        retry_after = max(0, math.ceil(reset_at - now))
+        retry_after = (
+            None if math.isinf(reset_at) else max(0, math.ceil(reset_at - now))
+        )
 
         return RateLimitResult(
             allowed=allowed,

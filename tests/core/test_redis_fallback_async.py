@@ -188,7 +188,7 @@ async def test_all_methods_trigger_fallback(method_name, args):
     )  # type: ignore[arg-type]
 
     method = getattr(storage, method_name)
-    result = await method(*args)
+    await method(*args)
 
     assert len(spy.calls) == 1
     call_method, call_args = spy.calls[0]

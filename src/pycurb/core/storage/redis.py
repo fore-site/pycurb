@@ -35,6 +35,8 @@ def with_fallback(func):
 
             # Determine 'now' from args/kwargs if present (last positional arg is expected to be `now`)
             now = kwargs.get("now") if "now" in kwargs else (args[-1] if args else None)
+            if not isinstance(now, (int, float)):
+                now = None
 
             if self.fail_open:
                 logger.warning(

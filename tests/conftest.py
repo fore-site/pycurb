@@ -16,7 +16,7 @@ def is_redis_available(host="localhost", port=6379):
     try:
         r = redis.Redis(host=host, port=port)
         return r.ping()
-    except:
+    except Exception:
         return False
 
 
@@ -56,12 +56,12 @@ async def async_redis_storage():
 
 @pytest_asyncio.fixture
 async def async_redis_storage_sentinel():
-    url = os.environ.get('REDIS_SENTINEL_URL')
+    url = os.environ.get("REDIS_SENTINEL_URL")
     if not url:
-        pytest.skip('REDIS_SENTINEL_URL not set, skipping sentinel tests.')
+        pytest.skip("REDIS_SENTINEL_URL not set, skipping sentinel tests.")
     redis_client = aioredis.from_url(url, decode_responses=True)
     await clear_async_redis_test_keys(redis_client)
-    storage = AsyncRedisStorage(redis_client, key_prefix='test:')
+    storage = AsyncRedisStorage(redis_client, key_prefix="test:")
     yield storage
     await clear_async_redis_test_keys(redis_client)
     await storage.close()
@@ -69,12 +69,12 @@ async def async_redis_storage_sentinel():
 
 @pytest_asyncio.fixture
 async def async_redis_storage_cluster():
-    url = os.environ.get('REDIS_CLUSTER_URL')
+    url = os.environ.get("REDIS_CLUSTER_URL")
     if not url:
-        pytest.skip('REDIS_CLUSTER_URL not set, skipping cluster tests.')
+        pytest.skip("REDIS_CLUSTER_URL not set, skipping cluster tests.")
     redis_client = aioredis.from_url(url, decode_responses=True)
     await clear_async_redis_test_keys(redis_client)
-    storage = AsyncRedisStorage(redis_client, key_prefix='test:')
+    storage = AsyncRedisStorage(redis_client, key_prefix="test:")
     yield storage
     await clear_async_redis_test_keys(redis_client)
     await storage.close()
@@ -82,12 +82,12 @@ async def async_redis_storage_cluster():
 
 @pytest_asyncio.fixture
 async def async_redis_storage_tls():
-    url = os.environ.get('REDIS_TLS_URL')
+    url = os.environ.get("REDIS_TLS_URL")
     if not url:
-        pytest.skip('REDIS_TLS_URL not set, skipping TLS tests.')
+        pytest.skip("REDIS_TLS_URL not set, skipping TLS tests.")
     redis_client = aioredis.from_url(url, decode_responses=True)
     await clear_async_redis_test_keys(redis_client)
-    storage = AsyncRedisStorage(redis_client, key_prefix='test:')
+    storage = AsyncRedisStorage(redis_client, key_prefix="test:")
     yield storage
     await clear_async_redis_test_keys(redis_client)
     await storage.close()
@@ -117,12 +117,12 @@ def sync_redis_storage():
 
 @pytest.fixture
 def sync_redis_storage_sentinel():
-    url = os.environ.get('REDIS_SENTINEL_URL')
+    url = os.environ.get("REDIS_SENTINEL_URL")
     if not url:
-        pytest.skip('REDIS_SENTINEL_URL not set, skipping sentinel tests.')
+        pytest.skip("REDIS_SENTINEL_URL not set, skipping sentinel tests.")
     redis_client = redis.from_url(url, decode_responses=True)
     clear_sync_redis_test_keys(redis_client)
-    storage = RedisStorage(redis_client, key_prefix='test:')
+    storage = RedisStorage(redis_client, key_prefix="test:")
     yield storage
     clear_sync_redis_test_keys(redis_client)
     storage.close()
@@ -130,12 +130,12 @@ def sync_redis_storage_sentinel():
 
 @pytest.fixture
 def sync_redis_storage_cluster():
-    url = os.environ.get('REDIS_CLUSTER_URL')
+    url = os.environ.get("REDIS_CLUSTER_URL")
     if not url:
-        pytest.skip('REDIS_CLUSTER_URL not set, skipping cluster tests.')
+        pytest.skip("REDIS_CLUSTER_URL not set, skipping cluster tests.")
     redis_client = redis.from_url(url, decode_responses=True)
     clear_sync_redis_test_keys(redis_client)
-    storage = RedisStorage(redis_client, key_prefix='test:')
+    storage = RedisStorage(redis_client, key_prefix="test:")
     yield storage
     clear_sync_redis_test_keys(redis_client)
     storage.close()
@@ -143,12 +143,12 @@ def sync_redis_storage_cluster():
 
 @pytest.fixture
 def sync_redis_storage_tls():
-    url = os.environ.get('REDIS_TLS_URL')
+    url = os.environ.get("REDIS_TLS_URL")
     if not url:
-        pytest.skip('REDIS_TLS_URL not set, skipping TLS tests.')
+        pytest.skip("REDIS_TLS_URL not set, skipping TLS tests.")
     redis_client = redis.from_url(url, decode_responses=True)
     clear_sync_redis_test_keys(redis_client)
-    storage = RedisStorage(redis_client, key_prefix='test:')
+    storage = RedisStorage(redis_client, key_prefix="test:")
     yield storage
     clear_sync_redis_test_keys(redis_client)
     storage.close()

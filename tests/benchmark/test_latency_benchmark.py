@@ -54,7 +54,7 @@ def is_redis_available():
     try:
         r = redis.Redis(host="localhost", port=6379)
         return r.ping()
-    except:
+    except Exception:
         return False
 
 
@@ -216,7 +216,7 @@ def test_rate_limit_benchmark(benchmark, algorithm, storage_type, limit, fill_le
             latencies.append(t1 - t0)
             return res
 
-        result = benchmark.pedantic(
+        benchmark.pedantic(
             bench_call, iterations=LATENCY_ITERATIONS, rounds=LATENCY_ROUNDS
         )
     else:
@@ -232,7 +232,7 @@ def test_rate_limit_benchmark(benchmark, algorithm, storage_type, limit, fill_le
             latencies.append(t1 - t0)
             return res
 
-        result = benchmark.pedantic(
+        benchmark.pedantic(
             bench_call_sync, iterations=LATENCY_ITERATIONS, rounds=LATENCY_ROUNDS
         )
 

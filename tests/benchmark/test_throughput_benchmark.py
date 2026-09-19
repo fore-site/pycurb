@@ -54,7 +54,7 @@ def is_redis_available():
     try:
         r = redis.Redis(host="localhost", port=6379)
         return r.ping()
-    except:
+    except Exception:
         return False
 
 

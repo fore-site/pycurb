@@ -2,6 +2,7 @@ from typing import Union, List, Callable
 from fastapi import Request, HTTPException
 from pycurb.core import AsyncRateLimiter, RateLimitResult
 from .extractors import ip_extractor
+import math
 import time
 
 
@@ -18,6 +19,13 @@ def rate_limiter(
         key = key_extractor(request)
         result = await limiter.check(key, rule_name)
         if not result:
+            # An infinite reset_at means the reset time is unknown (storage
+            # failure); omit Retry-After instead of crashing on int(inf).
+            if math.isinf(result.reset_at):
+                raise HTTPException(
+                    status_code=429,
+                    detail="Rate limit exceeded",
+                )
             retry_after = max(1, int(result.reset_at - time.time()))
             raise HTTPException(
                 status_code=429,

@@ -176,7 +176,7 @@ def test_all_methods_trigger_fallback_sync(method_name, args):
     )  # type: ignore
 
     method = getattr(storage, method_name)
-    result = method(*args)
+    method(*args)
 
     assert len(spy.calls) == 1
     call_method, call_args = spy.calls[0]

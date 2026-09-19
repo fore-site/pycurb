@@ -221,12 +221,15 @@ class RateLimitHeaders(BaseModel):
         limit: Value for `X-RateLimit-Limit`.
         remaining: Value for `X-RateLimit-Remaining`.
         reset: Value for `X-RateLimit-Reset` (unix timestamp).
+            None when the reset time is unknown (e.g. storage failure);
+            the header is omitted from the output in that case.
         retry_after: Optional `Retry-After` value in seconds.
+            None when unknown; the header is omitted from the output.
     """
 
     limit: int
     remaining: int
-    reset: int
+    reset: Optional[int] = None
     retry_after: Optional[int] = None
 
     def to_dict(self) -> Dict[str, str]:
@@ -234,8 +237,9 @@ class RateLimitHeaders(BaseModel):
         headers = {
             "X-RateLimit-Limit": str(self.limit),
             "X-RateLimit-Remaining": str(self.remaining),
-            "X-RateLimit-Reset": str(self.reset),
         }
+        if self.reset is not None:
+            headers["X-RateLimit-Reset"] = str(self.reset)
         if self.retry_after is not None:
             headers["Retry-After"] = str(self.retry_after)
         return headers
@@ -245,19 +249,29 @@ class RateLimitHeaders(BaseModel):
         cls, result: RateLimitResult, now: Optional[float] = None
     ) -> "RateLimitHeaders":
         """
-        Construct headers from a rate limit result
+        Construct headers from a rate limit result.
+
         If retry_after is not set, compute as max(0, reset_at - now).
+        An infinite reset_at (used by storage backends on failure, when the
+        reset time is genuinely unknown) is handled gracefully: the
+        X-RateLimit-Reset and Retry-After headers are omitted instead of
+        raising OverflowError.
         """
         if now is None:
             now = time.time()
         retry_after = result.retry_after
         if retry_after is None and not result.allowed:
-            retry_after = max(0, math.ceil(result.reset_at - now))
+            if not math.isinf(result.reset_at):
+                retry_after = max(0, math.ceil(result.reset_at - now))
+
+        reset: Optional[int] = None
+        if not math.isinf(result.reset_at):
+            reset = int(result.reset_at)
 
         return cls(
             limit=result.limit,
             remaining=result.remaining,
-            reset=int(result.reset_at),
+            reset=reset,
             retry_after=retry_after,
         )
 
@@ -271,5 +285,9 @@ class RateLimitExceeded(Exception):
 
     def __init__(self, result: RateLimitResult):
         self.result = result
-        retry_after = max(0, math.ceil(result.reset_at - time.time()))
-        super().__init__(f"Rate limit exceeded. Retry after {retry_after} seconds.")
+        if math.isinf(result.reset_at):
+            # Reset time unknown (e.g. storage failure); don't claim one.
+            super().__init__("Rate limit exceeded.")
+        else:
+            retry_after = max(0, math.ceil(result.reset_at - time.time()))
+            super().__init__(f"Rate limit exceeded. Retry after {retry_after} seconds.")

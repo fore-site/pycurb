@@ -11,8 +11,25 @@ on:
       - "docs/**"
 
 jobs:
+  lint:
+    name: Lint & format check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Run ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
   test:
     name: Test ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -20,27 +37,16 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        run: pip install uv
-
-      - name: Cache uv
-        uses: actions/cache@v5
+        uses: astral-sh/setup-uv@v10
         with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            uv-${{ runner.os }}-
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -e .[all] --group dev
-        shell: bash
+        run: uv sync --all-extras --group dev
 
       - name: Start Redis (Linux only)
         if: runner.os == 'Linux'
@@ -49,13 +55,31 @@ jobs:
           sleep 5
 
       - name: Run tests
-        run: uv run pytest --ignore=tests/benchmark/ -v
+        run: uv run pytest --ignore=tests/benchmark
         env:
           REDIS_HOST: localhost
 
       - name: Upload test results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: pytest-results-${{ matrix.os }}-py${{ matrix.python-version }}
           path: .pytest_cache
+
+  build:
+    name: Build & check distribution
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Check distribution metadata
+        run: uv run --group dev twine check dist/*

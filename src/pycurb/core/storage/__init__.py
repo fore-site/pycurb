@@ -5,4 +5,11 @@ from .redis_async import AsyncRedisStorage
 from .memory import MemoryStorage
 from .redis import RedisStorage
 
-__all__ = ["AsyncMemoryStorage", "AsyncRedisStorage", "MemoryStorage", "RedisStorage"]
+__all__ = [
+    "Storage",
+    "AsyncStorage",
+    "AsyncMemoryStorage",
+    "AsyncRedisStorage",
+    "MemoryStorage",
+    "RedisStorage",
+]

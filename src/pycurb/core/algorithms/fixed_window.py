@@ -15,7 +15,9 @@ class FixedWindowAlgorithm(RateLimiterAlgorithm):
         allowed, remaining, reset_at = storage.fixed_window(
             key=storage_key, window=rule.window, limit=rule.limit, now=now
         )
-        retry_after = max(0, math.ceil(reset_at - now))
+        retry_after = (
+            None if math.isinf(reset_at) else max(0, math.ceil(reset_at - now))
+        )
         return RateLimitResult(
             allowed=allowed,
             remaining=remaining,
