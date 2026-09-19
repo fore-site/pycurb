@@ -11,8 +11,10 @@ These tests use a subprocess with a crafted sys.path so we can simulate a
 installed.
 """
 
+import os
 import subprocess
 import sys
+import tempfile
 import textwrap
 from pathlib import Path
 
@@ -65,16 +67,24 @@ CORE_IMPORT_SNIPPET = BLOCK_REDIS_BOOTSTRAP + textwrap.dedent(
 
 
 def run_in_fresh_interpreter(code: str) -> subprocess.CompletedProcess:
+    """Run *code* in a fresh interpreter, isolated from the repo checkout.
+
+    The parent environment is inherited deliberately: scrubbing it breaks
+    Windows child interpreters at startup (with e.g. SystemRoot missing,
+    init fails with "_Py_HashRandomization_Init: failed to get random
+    numbers to initialize Python"). Isolation comes from PYTHONPATH and
+    cwd instead — both cross-platform.
+    """
+    env = os.environ.copy()
+    # Ensure the child imports this checkout's source, not an installed copy.
+    existing = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = SRC_DIR if not existing else SRC_DIR + os.pathsep + existing
     return subprocess.run(
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,
-        cwd="/",  # avoid picking up local conftest.py
-        env={
-            "PYTHONPATH": SRC_DIR,
-            "PATH": "/usr/bin:/bin",
-            "HOME": "/tmp",
-        },
+        cwd=tempfile.gettempdir(),  # outside the repo: no conftest.py pickup
+        env=env,
     )
 
 
