@@ -1,0 +1,1 @@
+[{"timestamp": 1790722055, "python": "3.13.14", "platform": "linux", "os_release": "Ubuntu 26.04.1 LTS", "cpu_model": "Intel(R) Core(TM) i5-8365U CPU @ 1.60GHz", "cpu_count": {"logical": 8, "physical": 1}, "mem_total_gib": 7.0, "pycurb_commit": "cbce997", "redis_version": "8.10.1"}]

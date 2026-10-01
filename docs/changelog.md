@@ -1,3 +1,32 @@
+## Unreleased
+
+Fixed
+
+- **Clock-regression corruption in the bucket algorithms.** A request
+  timestamped slightly in the past (NTP step, out-of-order client
+  timestamps, multi-node clock skew) silently inflated the leaky-bucket
+  queue — `floor(negative_elapsed * rate) == -1` added a phantom slot per
+  regressed call — and drained the token bucket (deeply negative elapsed
+  could cause wrongful denials). Elapsed time is now clamped at zero in
+  all six implementations: sync/async `MemoryStorage` and the
+  sync/async Redis Lua scripts. Found by the new correctness-under-
+  contention tests (`tests/core/test_concurrency_correctness.py`):
+  under a 250-request burst, a regressed arrival previously caused
+  spurious denials (observed: 7 acceptances where semantics require 10).
+
+### Benchmarks
+
+- Complete rebuild of the benchmark suites (`tests/benchmark/`): shared
+  harness with warmup on dedicated keys, GC disabled during measured
+  regions only, 3 measured iterations per scenario with mean/median/
+  min/max/stdev, and per-check p50/p95/p99/max latency. New
+  concurrency-sweep suite (1→500 across same-key and many-keys
+  contention modes plus sustained load). Results are machine-readable
+  JSON with full scenario metadata and an environment sidecar
+  (`docs/data/`). Methodology documented in the new Benchmarking guide;
+  the Performance page now shows throughput, latency percentiles,
+  throughput-vs-concurrency and latency-vs-concurrency charts.
+
 ## v0.2.2
 
 Release date: 09-19-2026

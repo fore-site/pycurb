@@ -1,0 +1,318 @@
+/*
+ * Performance page styles.
+ *
+ * Loaded via mkdocs extra_css so the rules live in <head> and apply to
+ * every DOM generation. This matters because Material's
+ * navigation.instant swaps page content via XHR and the swapped-in
+ * markup loses inline style attributes — including the ones Plotly sets
+ * on its SVG layers (verified empirically: .main-svg layers render
+ * position:static and stack vertically instead of overlaying, which
+ * displaced legends and produced double-image bars). Head stylesheets
+ * are not affected by content swaps.
+ *
+ * The file does two jobs:
+ *   1. re-state the layout-critical styles Plotly sets as inline styles
+ *      (positioning of the svg layers) — see "layering enforcement";
+ *   2. statically mirror the styles Plotly injects at runtime as a
+ *      <style> tag, which also does not survive a content swap and whose
+ *      loss silently kills all chart interactivity — see the second
+ *      block below for the full explanation.
+ */
+
+/* ---- filter control rows: keep label+select pairs together ---- */
+
+.perf-controls {
+    position: relative;
+    z-index: 5;
+    margin: 0 0 14px 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 22px;
+}
+
+.perf-controls .perf-ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-weight: 400;
+    margin: 0;
+}
+
+.perf-controls select {
+    min-height: 2.4em;
+    padding: 4px 10px;
+    font-size: .78rem;
+    background: transparent;
+}
+
+.perf-chart {
+    margin-bottom: 32px;
+}
+
+.perf-caption {
+    font-size: .72rem;
+    opacity: .8;
+    margin-top: -18px;
+}
+
+/* ---- Plotly layering enforcement (see file header) ----
+   Plotly normally sets these as inline styles; under instant-nav those
+   are stripped from swapped content, so restate them at stylesheet
+   level. Harmless on cold loads: it matches what Plotly sets itself. */
+
+.perf-chart .svg-container {
+    position: relative !important;
+}
+
+.perf-chart .main-svg {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+.perf-chart .modebar-container {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+}
+
+/* ---- Plotly runtime-injected base styles (static mirror) ----
+   On first plot, Plotly injects a <style id="plotly.js-style-global">
+   tag into <head>. Material's navigation.instant swaps page content via
+   XHR but keeps <head> ... EXCEPT that the injected tag is added to the
+   DOM at runtime, not present in the served HTML, so it does not survive
+   in the served-HTML sense either: after a content swap the tag is gone
+   (verified in-browser), and Plotly never re-creates it because the CDN
+   script is not re-executed (same src -> browser dedupes) and the
+   injection runs once per script load.
+
+   Loss of that sheet is invisible structurally but fatal functionally:
+   its two most important rules implement Plotly's entire event routing
+   across the three stacked .main-svg layers:
+     .main-svg { pointer-events: none }  -> svg roots never capture events
+     .main-svg .draglayer { pointer-events: all } -> ...except the drag
+                                                    layer, deliberately
+   Without them every svg root computes pointer-events:auto, the topmost
+   (hover) layer covers the whole chart and swallows every event: hover
+   tooltips, drag-zoom, legend click-to-toggle and modebar clicks all go
+   dead. The rest of the sheet styles the modebar (positioning, buttons,
+   hover-reveal opacity, tooltips) and cursor affordances.
+
+   The block below is a static mirror of the rules relevant to this page
+   (scatter/bar charts only: no mapbox/notifier rules) extracted from the
+   injected sheet of plotly.js 3.6.0. Selectors are kept identical to
+   Plotly's so cold-load and post-navigation cascades match exactly.
+   Re-extract if the Plotly version in performance.md is ever bumped. */
+
+.js-plotly-plot .plotly,
+.js-plotly-plot .plotly div {
+    direction: ltr;
+    font-family: "Open Sans", verdana, arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.js-plotly-plot .plotly input,
+.js-plotly-plot .plotly button {
+    font-family: "Open Sans", verdana, arial, sans-serif;
+}
+
+.js-plotly-plot .plotly input:focus,
+.js-plotly-plot .plotly button:focus {
+    outline: none;
+}
+
+.js-plotly-plot .plotly a {
+    text-decoration: none;
+}
+
+.js-plotly-plot .plotly a:hover {
+    text-decoration: none;
+}
+
+.js-plotly-plot .plotly .crisp {
+    shape-rendering: crispedges;
+}
+
+.js-plotly-plot .plotly .user-select-none {
+    user-select: none;
+}
+
+.js-plotly-plot .plotly svg a {
+    fill: #4a7adb;
+}
+
+.js-plotly-plot .plotly svg a:hover {
+    fill: #3c6dc5;
+}
+
+/* event routing across the three svg layers (the critical pair) */
+.js-plotly-plot .plotly .main-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.js-plotly-plot .plotly .main-svg .draglayer {
+    pointer-events: all;
+}
+
+/* cursor affordances during drag/resize */
+.js-plotly-plot .plotly .cursor-pointer { cursor: pointer; }
+.js-plotly-plot .plotly .cursor-crosshair { cursor: crosshair; }
+.js-plotly-plot .plotly .cursor-move { cursor: move; }
+.js-plotly-plot .plotly .cursor-col-resize { cursor: col-resize; }
+.js-plotly-plot .plotly .cursor-row-resize { cursor: row-resize; }
+.js-plotly-plot .plotly .cursor-ns-resize { cursor: ns-resize; }
+.js-plotly-plot .plotly .cursor-ew-resize { cursor: ew-resize; }
+.js-plotly-plot .plotly .cursor-sw-resize { cursor: sw-resize; }
+.js-plotly-plot .plotly .cursor-s-resize { cursor: s-resize; }
+.js-plotly-plot .plotly .cursor-se-resize { cursor: se-resize; }
+.js-plotly-plot .plotly .cursor-w-resize { cursor: w-resize; }
+.js-plotly-plot .plotly .cursor-e-resize { cursor: e-resize; }
+.js-plotly-plot .plotly .cursor-nw-resize { cursor: nw-resize; }
+.js-plotly-plot .plotly .cursor-n-resize { cursor: n-resize; }
+.js-plotly-plot .plotly .cursor-ne-resize { cursor: ne-resize; }
+.js-plotly-plot .plotly .cursor-grab { cursor: grab; }
+
+/* modebar */
+.js-plotly-plot .plotly .modebar {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+}
+
+.js-plotly-plot .plotly .ease-bg {
+    transition: background-color .3s;
+}
+
+.js-plotly-plot .plotly .modebar--hover > :not(.watermark) {
+    opacity: 0;
+    transition: opacity .3s;
+}
+
+.js-plotly-plot .plotly:hover .modebar--hover .modebar-group {
+    opacity: 1;
+}
+
+.js-plotly-plot .plotly:focus-within .modebar--hover .modebar-group {
+    opacity: 1;
+}
+
+.js-plotly-plot .plotly .modebar-group {
+    float: left;
+    display: inline-block;
+    box-sizing: border-box;
+    padding-left: 8px;
+    position: relative;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.js-plotly-plot .plotly .modebar-group a {
+    display: grid;
+    place-content: center;
+}
+
+.js-plotly-plot .plotly .modebar-btn {
+    position: relative;
+    font-size: 16px;
+    padding: 3px 4px;
+    height: 22px;
+    cursor: pointer;
+    line-height: normal;
+    box-sizing: border-box;
+    border: none;
+    background: transparent;
+}
+
+.js-plotly-plot .plotly .modebar-btn svg {
+    position: relative;
+}
+
+.js-plotly-plot .plotly .modebar-btn:focus-visible {
+    outline: #000 solid 1px;
+    outline-offset: 1px;
+    border-radius: 3px;
+}
+
+.js-plotly-plot .plotly .modebar.vertical {
+    display: flex;
+    flex-flow: column wrap;
+    align-content: flex-end;
+    max-height: 100%;
+}
+
+.js-plotly-plot .plotly .modebar.vertical svg {
+    top: -1px;
+}
+
+.js-plotly-plot .plotly .modebar.vertical .modebar-group {
+    display: block;
+    float: none;
+    padding-left: 0;
+    padding-bottom: 8px;
+}
+
+.js-plotly-plot .plotly .modebar.vertical .modebar-group .modebar-btn {
+    display: block;
+    text-align: center;
+}
+
+/* modebar button tooltips (data-title bubbles) */
+.js-plotly-plot .plotly [data-title]::before,
+.js-plotly-plot .plotly [data-title]::after {
+    position: absolute;
+    transform: translate3d(0, 0, 0);
+    display: none;
+    opacity: 0;
+    z-index: 1001;
+    pointer-events: none;
+    top: 110%;
+    right: 50%;
+}
+
+.js-plotly-plot .plotly [data-title]:hover::before,
+.js-plotly-plot .plotly [data-title]:hover::after {
+    display: block;
+    opacity: 1;
+}
+
+.js-plotly-plot .plotly [data-title]::before {
+    content: "";
+    background: transparent;
+    border: 6px solid transparent;
+    z-index: 1002;
+    margin-top: -12px;
+    margin-right: -6px;
+    border-bottom-color: #69738a;
+}
+
+.js-plotly-plot .plotly [data-title]::after {
+    content: attr(data-title);
+    background: #69738a;
+    color: #fff;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 12px;
+    white-space: nowrap;
+    margin-right: -18px;
+    border-radius: 2px;
+}
+
+.js-plotly-plot .plotly .vertical [data-title]::before,
+.js-plotly-plot .plotly .vertical [data-title]::after {
+    top: 0%;
+    right: 200%;
+}
+
+.js-plotly-plot .plotly .vertical [data-title]::before {
+    border: 6px solid transparent;
+    margin-top: 8px;
+    margin-right: -30px;
+    border-left-color: #69738a;
+}
