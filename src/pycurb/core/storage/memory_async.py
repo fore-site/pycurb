@@ -79,7 +79,9 @@ class AsyncMemoryStorage(AsyncStorage):
         async with lock:
             tokens, last_refill_time = self._token.get(key, (float(capacity), now))
 
-            time_elapsed = now - last_refill_time
+            # Clamp elapsed at zero: a clock regression must not silently
+            # refill tokens (negative elapsed would drain them).
+            time_elapsed = max(now - last_refill_time, 0.0)
             tokens_during_elapsed = time_elapsed * refill_rate
 
             new_tokens = min(tokens + tokens_during_elapsed, float(capacity))
@@ -102,7 +104,11 @@ class AsyncMemoryStorage(AsyncStorage):
         async with lock:
             queue_size, last_leak_time = self._leaky.get(key, (0, now))
 
-            leaked = math.floor((now - last_leak_time) * leak_rate)
+            # Clamp elapsed at zero: with negative elapsed, floor() of a
+            # negative number yields -1 and the queue would silently grow
+            # (queue - (-1)) on every clock regression.
+            elapsed = max(now - last_leak_time, 0.0)
+            leaked = math.floor(elapsed * leak_rate)
             new_queue = max(queue_size - leaked, 0)
 
             # Preserve fractional leak tracking history

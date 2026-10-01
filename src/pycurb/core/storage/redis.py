@@ -184,7 +184,9 @@ class RedisStorage(Storage):
             last_refill = now
         end
 
-        local elapsed = now - last_refill
+        -- Clamp elapsed at zero: a clock regression or out-of-order
+        -- timestamp must not silently refill tokens.
+        local elapsed = math.max(now - last_refill, 0)
         local tokens_during_elapsed = elapsed * rate
         local new_tokens = math.min(capacity, tokens + tokens_during_elapsed)
 
@@ -249,7 +251,10 @@ class RedisStorage(Storage):
             last_leak = now
         end
 
-        local elapsed = now - last_leak
+        -- Clamp elapsed at zero: with negative elapsed, floor() of a
+        -- negative number yields -1 and the queue would silently grow
+        -- (queue - (-1)) on every clock regression.
+        local elapsed = math.max(now - last_leak, 0)
         local leaked = math.floor(elapsed * rate)
         local new_queue = math.max(queue_size - leaked, 0)
 
