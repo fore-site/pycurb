@@ -38,6 +38,9 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/fore-site/pycurb
 
+extra_css:
+  - stylesheets/performance.css
+
 extra_javascript:
   - https://cdn.plot.ly/plotly-3.6.0.min.js
 
@@ -92,6 +95,7 @@ nav:
   - Storage Backends: storage.md
   - Advanced Features: advanced.md
   - Performance: performance.md
+  - Benchmarking: benchmarking.md
   - API Reference: api.md
   - Changelog: changelog.md
   - Contributing: contributing.md
