@@ -1,7 +1,6 @@
 # Contributing to PyCurb
 
-Thank you for your interest in contributing! This guide covers everything you
-need to set up a development environment and submit changes.
+Welcome to Pycurb, thank you for your interest in contributing.
 
 ## Development Setup
 
@@ -113,7 +112,7 @@ Open a [GitHub issue](https://github.com/fore-site/pycurb/issues) with:
 
 A few invariants worth understanding before changing internals:
 
-- **`reset_at = float("inf")` means "reset time unknown"** — storage backends
+- **`reset_at = float("inf")` means "reset time unknown"** so storage backends
   return this when a failure occurs and no fallback is configured. Downstream
   consumers (algorithms, `RateLimitHeaders`, adapters) must handle it
   gracefully rather than assuming a finite timestamp. Regression tests live in
