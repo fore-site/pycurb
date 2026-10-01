@@ -1,4 +1,6 @@
-## Unreleased
+## v0.2.3
+
+Release date: 10-01-2026
 
 Fixed
 
