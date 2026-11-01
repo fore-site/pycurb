@@ -210,6 +210,22 @@ class TestMiddleware:
 
 
 class TestDependency:
+    def test_allowed_response_gets_rate_limit_headers(self, limiter):
+        app = FastAPI()
+
+        @app.get("/headers")
+        async def headers_endpoint(
+            _=Depends(rate_limiter(limiter, "strict", key_extractor=ip_extractor)),
+        ):
+            return {"ok": True}
+
+        response = TestClient(app).get("/headers")
+
+        assert response.status_code == 200
+        assert response.headers["X-RateLimit-Limit"] == "1"
+        assert response.headers["X-RateLimit-Remaining"] == "0"
+        assert "X-RateLimit-Reset" in response.headers
+
     def test_per_endpoint_rule_allows_within_limit(self, app):
         client = TestClient(app)
         # strict rule: limit=1 per 10 seconds

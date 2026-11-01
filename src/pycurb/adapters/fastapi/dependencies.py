@@ -1,38 +1,44 @@
-from typing import Union, List, Callable
-from fastapi import Request, HTTPException
+from collections.abc import Awaitable, Callable
+from typing import List, Union
+
+from fastapi import HTTPException, Request, Response
 from pycurb.core import AsyncRateLimiter, RateLimitResult
+from pycurb.core.models import RateLimitHeaders
+
 from .extractors import ip_extractor
-import math
-import time
 
 
 def rate_limiter(
     limiter: AsyncRateLimiter,
     rule_name: Union[str, List[str]],
     key_extractor: Callable[[Request], str] = ip_extractor,
-):
+) -> Callable[[Request, Response], Awaitable[RateLimitResult]]:
     """
     Factory that creates a FastAPI dependency for rate limiting.
     """
 
-    async def dependency(request: Request) -> RateLimitResult:
+    async def dependency(request: Request, response: Response) -> RateLimitResult:
         key = key_extractor(request)
         result = await limiter.check(key, rule_name)
+
+        headers = RateLimitHeaders.from_result(result).to_dict()
+        if result.storage_unavailable:
+            raise HTTPException(
+                status_code=503,
+                detail="Rate limiter unavailable",
+                headers=headers,
+            )
+
         if not result:
-            # An infinite reset_at means the reset time is unknown (storage
-            # failure); omit Retry-After instead of crashing on int(inf).
-            if math.isinf(result.reset_at):
-                raise HTTPException(
-                    status_code=429,
-                    detail="Rate limit exceeded",
-                )
-            retry_after = max(1, int(result.reset_at - time.time()))
             raise HTTPException(
                 status_code=429,
                 detail="Rate limit exceeded",
-                headers={"Retry-After": str(retry_after)},
+                headers=headers,
             )
+
         request.state.rate_limit_result = result
+        for name, value in headers.items():
+            response.headers[name] = value
         return result
 
     return dependency

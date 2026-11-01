@@ -6,9 +6,8 @@ returns `reset_at = float("inf")` — an honest "reset time unknown" signal.
 These tests assert that the *entire* downstream chain (algorithm -> limiter ->
 models -> adapters) handles that signal without raising OverflowError.
 
-Before the fix, `math.ceil(inf)` / `int(inf)` crashed limiter.check(),
-RateLimitHeaders.from_result(), RateLimitExceeded, and the FastAPI
-dependency — i.e. the safety net itself was broken.
+The adapters must preserve that distinction: a quota denial is a 429, while a
+storage failure is a 503 with no fabricated reset or retry time.
 """
 
 import math
@@ -140,7 +139,7 @@ def test_fastapi_dependency_fail_closed_no_retry_after():
     """The FastAPI dependency must not crash on int(inf) with fail-closed."""
     import asyncio
 
-    from fastapi import HTTPException
+    from fastapi import HTTPException, Response
 
     from pycurb.adapters.fastapi.dependencies import rate_limiter
 
@@ -148,9 +147,11 @@ def test_fastapi_dependency_fail_closed_no_retry_after():
     dependency = rate_limiter(limiter, "api")
 
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(dependency(make_fake_request()))
+        asyncio.run(dependency(make_fake_request(), Response()))
 
-    assert exc_info.value.status_code == 429
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.headers is not None
+    assert exc_info.value.headers["X-RateLimit-Limit"] == "5"
     # Reset time unknown -> no Retry-After header (previously OverflowError)
     assert not (exc_info.value.headers or {}).get("Retry-After")
 
@@ -160,7 +161,7 @@ def test_fastapi_dependency_fail_closed_finite_reset_sets_retry_after():
     import asyncio
     import time
 
-    from fastapi import HTTPException
+    from fastapi import HTTPException, Response
 
     from pycurb.adapters.fastapi.dependencies import rate_limiter
 
@@ -178,7 +179,7 @@ def test_fastapi_dependency_fail_closed_finite_reset_sets_retry_after():
     dependency = rate_limiter(DenyLimiter(), "api")
 
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(dependency(make_fake_request()))
+        asyncio.run(dependency(make_fake_request(), Response()))
 
     assert exc_info.value.status_code == 429
     assert exc_info.value.headers is not None

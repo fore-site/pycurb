@@ -5,6 +5,7 @@ from pycurb.core import (
     MemoryStorage,
     AsyncMemoryStorage,
     LimitRule,
+    RateLimitResult,
 )
 from pycurb.adapters.django import (
     rate_limit,
@@ -214,6 +215,29 @@ class TestSyncDecorator:
         response = view(request)
         assert response.status_code == 429
         assert json.loads(response.content) == {"custom": "limited"}
+        assert response["X-RateLimit-Limit"] == "1"
+        assert response["X-RateLimit-Remaining"] == "0"
+
+    def test_storage_failure_returns_503(self, factory):
+        class UnavailableLimiter:
+            def check(self, key, rule_name):
+                return RateLimitResult(
+                    allowed=False,
+                    remaining=0,
+                    reset_at=float("inf"),
+                    limit=1,
+                )
+
+        @rate_limit(UnavailableLimiter(), "strict", key_extractor=ip_extractor)
+        def view(request):
+            return JsonResponse({"ok": True})
+
+        response = view(factory.get("/"))
+
+        assert response.status_code == 503
+        assert json.loads(response.content) == {"detail": "Rate limiter unavailable"}
+        assert response["X-RateLimit-Limit"] == "1"
+        assert "Retry-After" not in response
 
     def test_decorator_with_user_id_extractor(self, limiter_sync, factory):
         @rate_limit(limiter_sync, "global", key_extractor=user_id_extractor)

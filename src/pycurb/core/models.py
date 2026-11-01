@@ -212,6 +212,16 @@ class RateLimitResult(BaseModel):
         """Return True if allowed, False otherwise."""
         return self.allowed
 
+    @property
+    def storage_unavailable(self) -> bool:
+        """Whether the decision was a fail-closed storage error.
+
+        Storage backends use an infinite reset time when they cannot determine
+        when a denied request could be retried. That is distinct from a real
+        quota denial, which always has a finite reset time.
+        """
+        return not self.allowed and math.isinf(self.reset_at)
+
 
 class RateLimitHeaders(BaseModel):
     """

@@ -1,6 +1,6 @@
 import pytest
 from flask import Flask, jsonify
-from pycurb.core import RateLimiter, MemoryStorage, LimitRule
+from pycurb.core import RateLimitResult, RateLimiter, MemoryStorage, LimitRule
 from pycurb.adapters.flask import rate_limit, RateLimit, ip_extractor, api_key_extractor
 import time
 
@@ -201,6 +201,32 @@ class TestDecorator:
         resp = client.get("/")
         assert resp.status_code == 429
         assert resp.json == {"custom": "limited"}
+        assert resp.headers["X-RateLimit-Limit"] == "1"
+        assert resp.headers["X-RateLimit-Remaining"] == "0"
+
+    def test_storage_failure_returns_503(self):
+        class UnavailableLimiter:
+            def check(self, key, rule_name):
+                return RateLimitResult(
+                    allowed=False,
+                    remaining=0,
+                    reset_at=float("inf"),
+                    limit=1,
+                )
+
+        app = Flask(__name__)
+
+        @app.route("/")
+        @rate_limit(UnavailableLimiter(), "strict", key_extractor=ip_extractor)
+        def view():
+            return jsonify({"ok": True})
+
+        response = app.test_client().get("/")
+
+        assert response.status_code == 503
+        assert response.json == {"detail": "Rate limiter unavailable"}
+        assert response.headers["X-RateLimit-Limit"] == "1"
+        assert "Retry-After" not in response.headers
 
 
 # Middleware Tests

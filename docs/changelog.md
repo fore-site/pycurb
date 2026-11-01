@@ -1,3 +1,17 @@
+## Unreleased
+
+Changed
+
+- FastAPI dependency-based rate limiting now adds the standard rate-limit
+  headers to successful responses and to quota-denial responses.
+- All framework adapters distinguish a fail-closed storage failure from a real
+  quota denial. Storage failures return `503 Service Unavailable`; quota
+  exhaustion remains `429 Too Many Requests`.
+- Flask and Django custom `on_limit` responses now receive the standard
+  rate-limit headers.
+- `RateLimitResult.storage_unavailable` exposes the fail-closed storage
+  condition without requiring consumers to repeat the infinite-reset check.
+
 ## v0.2.3
 
 Release date: 10-01-2026

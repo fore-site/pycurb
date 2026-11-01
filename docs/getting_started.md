@@ -173,9 +173,10 @@ The adapters do not add extra runtime behaviour: they call into your `RateLimite
 
 - `key_extractor`: a callable that returns the client identifier (IP, API key, user id). If you do not provide one, the adapters default to `ip_extractor`.
 
-- Response headers: adapters set `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` on allowed responses and `Retry-After` on 429 responses.
-
-Note: FastAPI dependency adapter only sets the `Retry-After` header.
+- Response headers: adapters set `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and
+  `X-RateLimit-Reset` when the reset time is known. Quota denials also include
+  `Retry-After` when it is known. Fail-closed storage failures omit unknown
+  reset/retry values and return `503 Service Unavailable`.
 
 - Composite rules: The adapters accept a single rule name or a list of rule names (e.g. `['global', 'strict']`). All rules must allow for the request to succeed.
 
