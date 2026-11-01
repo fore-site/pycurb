@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="grid cards" markdown>
 
 - **Five algorithms:** Sliding Window, Fixed Window, Token Bucket, Leaky Bucket, and GCRA — choose the right strategy for your workload.
-- **Async & sync:** Works with ASGI (FastAPI) and WSGI (Flask, Django) environments.
+- **Async & sync:** Supports async FastAPI and Django views, plus sync Flask and Django integrations.
 - **Pluggable storage:** In-memory and Redis backends with graceful fallback and connection pooling.
 - **Framework adapters:** Ready-to-use adapters for FastAPI, Flask, and Django — minimal integration code.
 - **Composite limits:** Enforce multiple rules simultaneously (for example, per-minute + per-hour) with a single check.

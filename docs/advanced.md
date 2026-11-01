@@ -133,7 +133,7 @@ This ensures that clients see the strictest quota information, which is the most
 
 ## Async vs Sync
 
-Pycurb provides [`RateLimiter`](api.md#pycurb.core.limiter.RateLimiter) for sync code and [`AsyncRateLimiter`](api.md#pycurb.core.limiter_async.AsyncRateLimiter) for async code. Use matching adapters/decorators — mixing async views with sync limiters (or vice-versa) will raise `TypeError`.
+Pycurb provides [`RateLimiter`](api.md#pycurb.core.limiter.RateLimiter) for sync code and [`AsyncRateLimiter`](api.md#pycurb.core.limiter_async.AsyncRateLimiter) for async code. Use matching adapters/decorators — mixing async views with sync limiters (or vice-versa) will raise `TypeError`. The Django decorator supports both sync and async views; the FastAPI adapters require `AsyncRateLimiter`; Flask adapters and Django middleware are sync-only.
 
 ## Choosing time source and observing behavior
 

@@ -9,6 +9,9 @@ Quick links:
 - [pycurb.core.resolver](#pycurb.core.resolver)
 - [pycurb.core.decorators](#pycurb.core.decorators)
 - [pycurb.utils](#pycurb.utils)
+- [pycurb.adapters.fastapi](#pycurb.adapters.fastapi)
+- [pycurb.adapters.flask](#pycurb.adapters.flask)
+- [pycurb.adapters.django](#pycurb.adapters.django)
 
 <a id="pycurb.core.models"></a>
 
@@ -81,3 +84,27 @@ Quick links:
 ::: pycurb.utils.parse_rate_limit_string
 
 ::: pycurb.utils.parse_duration
+
+<a id="pycurb.adapters.fastapi"></a>
+
+## pycurb.adapters.fastapi
+
+::: pycurb.adapters.fastapi.dependencies.rate_limiter
+
+::: pycurb.adapters.fastapi.middleware.RateLimitMiddleware
+
+<a id="pycurb.adapters.flask"></a>
+
+## pycurb.adapters.flask
+
+::: pycurb.adapters.flask.decorators.rate_limit
+
+::: pycurb.adapters.flask.middleware.RateLimit
+
+<a id="pycurb.adapters.django"></a>
+
+## pycurb.adapters.django
+
+::: pycurb.adapters.django.decorators.rate_limit
+
+::: pycurb.adapters.django.middleware.create_rate_limit_middleware

@@ -39,7 +39,7 @@ from pycurb.core import AsyncMemoryStorage, AsyncRateLimiter
 
 storage = AsyncMemoryStorage()
 rules = [LimitRule(name="api", algorithm="sliding_window", limit=100, window=60)]
-limiter_async = AsyncRateLimiter(storage=storage, rules=rule)
+limiter_async = AsyncRateLimiter(storage=storage, rules=rules)
 ```
 
 ## Check a key programmatically (see [`RateLimiter.check`](api.md#pycurb.core.limiter.RateLimiter.check))
@@ -167,16 +167,22 @@ pycurb provides lightweight adapters to integrate the limiter into WSGI / ASGI f
 - expose middleware you can mount globally, and
 - expose a dependency/helper for async frameworks (FastAPI).
 
-The adapters do not add extra runtime behaviour: they call into your `RateLimiter`/`AsyncRateLimiter` and translate results into HTTP responses and headers. Below are practical examples
+The adapters do not change the limiter algorithms: they call into your
+`RateLimiter`/`AsyncRateLimiter` and translate results into HTTP responses and
+headers. Below are practical examples.
 
 ### Common concepts
 
-- `key_extractor`: a callable that returns the client identifier (IP, API key, user id). If you do not provide one, the adapters default to `ip_extractor`.
+- `key_extractor`: a callable that returns the client identifier (IP, API key,
+  user id). If you do not provide one, the adapters default to `ip_extractor`.
 
 - Response headers: adapters set `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and
   `X-RateLimit-Reset` when the reset time is known. Quota denials also include
   `Retry-After` when it is known. Fail-closed storage failures omit unknown
   reset/retry values and return `503 Service Unavailable`.
+- Quota exhaustion returns `429 Too Many Requests`. Custom `on_limit` responses
+  from the Flask and Django decorators also receive the standard rate-limit
+  headers.
 
 - Composite rules: The adapters accept a single rule name or a list of rule names (e.g. `['global', 'strict']`). All rules must allow for the request to succeed.
 
@@ -221,15 +227,20 @@ RateLimit(app, limiter, 'global', key_extractor=ip_extractor)
 Advanced options:
 
 - You can pass `on_limit` to the decorator to return a custom response when limited.
-- The decorator/middleware will raise or return a 429 when the limit is exceeded and include `Retry-After` and `X-RateLimit-*` headers.
+- Quota exhaustion returns `429 Too Many Requests` and includes `Retry-After`
+  and `X-RateLimit-*` headers when those values are known. A fail-closed
+  storage failure returns `503 Service Unavailable` instead.
 
-### Django (sync)
+### Django (sync and async decorator)
 
-Django usage mirrors Flask but uses a helper to create middleware classes and a decorator for views. Example:
+Django usage mirrors Flask but uses a helper to create middleware classes and a
+decorator for views. The decorator supports both sync and async views; the
+middleware factory supports sync views and limiters only. Example:
 
 ```python
 from pycurb.core import RateLimiter, MemoryStorage, LimitRule
 from pycurb.adapters.django import rate_limit, create_rate_limit_middleware, ip_extractor
+from django.http import JsonResponse
 
 storage = MemoryStorage()
 rules = [LimitRule(name='global', algorithm='sliding_window', limit=2, window=10)]
@@ -292,7 +303,9 @@ async def composite(_=Depends(rate_limiter(limiter, ['global', 'strict'], key_ex
 Common extractors included with adapters:
 
 - `ip_extractor(request)` — extracts client IP (uses X-Forwarded-For when present).
-- `api_key_extractor(request)` — reads `X-API-Key` header or other configured locations.
+- `api_key_extractor(request)` — reads `X-API-Key` by default; FastAPI and
+  Django accept a custom header name, while Flask accepts a configured
+  extractor callable.
 - `user_id_extractor(request)` — extracts authenticated user id when available.
 
 You can also pass a custom callable that accepts the framework request object and returns a string key.
