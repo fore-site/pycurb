@@ -1,16 +1,34 @@
-## Unreleased
+## v0.3.0
+
+Release date: 11-01-2026
 
 Changed
 
 - FastAPI dependency-based rate limiting now adds the standard rate-limit
   headers to successful responses and to quota-denial responses.
 - All framework adapters distinguish a fail-closed storage failure from a real
-  quota denial. Storage failures return `503 Service Unavailable`; quota
-  exhaustion remains `429 Too Many Requests`.
+  quota denial. Storage failures now return `503 Service Unavailable`; quota
+  exhaustion remains `429 Too Many Requests`. This changes the previous
+  adapter behavior that returned 429 for storage failures.
 - Flask and Django custom `on_limit` responses now receive the standard
   rate-limit headers.
 - `RateLimitResult.storage_unavailable` exposes the fail-closed storage
   condition without requiring consumers to repeat the infinite-reset check.
+- Flask middleware now defaults to the built-in client-IP extractor when no
+  custom extractor is provided, and Django and FastAPI middleware accept
+  composite rule names consistently.
+- Framework adapter APIs now include complete inline type annotations for
+  limiter callbacks, views, middleware, and response types.
+
+Added
+
+- Regression coverage for success headers, custom denial responses, and
+  storage failures across the FastAPI, Flask, and Django adapters.
+
+Dependencies
+
+- Updated the locked Starlette version to 1.10.0 to avoid the deprecated
+  AnyIO `BlockingPortal` alias used by the test client.
 
 ## v0.2.3
 
