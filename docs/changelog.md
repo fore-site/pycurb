@@ -1,3 +1,18 @@
+## v0.3.1
+
+Release date: 11-02-2026
+
+Fixed
+
+- Replaced the recursive `LimitRule` model-validator return annotation with
+  `typing_extensions.Self`, avoiding a false-positive Pylance diagnostic when
+  consumers instantiate `LimitRule`.
+
+Dependencies
+
+- Declared `typing-extensions` as a direct runtime dependency for Python 3.10
+  compatibility.
+
 ## v0.3.0
 
 Release date: 11-01-2026

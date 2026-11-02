@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, Literal, Dict, Any
+from typing_extensions import Self
 import time
 import math
 
@@ -67,7 +68,7 @@ class LimitRule(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_algorithm_parameters(self) -> "LimitRule":
+    def validate_algorithm_parameters(self) -> Self:
         """
         Ensure algorithm-specific parameters are valid.
         """

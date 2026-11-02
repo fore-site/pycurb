@@ -2076,10 +2076,11 @@ wheels = [
 
 [[package]]
 name = "pycurb"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
+    { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
@@ -2159,6 +2160,7 @@ requires-dist = [
     { name = "redis", marker = "extra == 'redis'", specifier = ">=8.0.0" },
     { name = "ruff", marker = "extra == 'docs'", specifier = ">=0.15.18" },
     { name = "starlette", marker = "extra == 'fastapi'", specifier = ">=1.0.0" },
+    { name = "typing-extensions", specifier = ">=4.12.2" },
 ]
 provides-extras = ["fastapi", "django", "flask", "redis", "all", "docs"]
 
